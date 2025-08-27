@@ -21,14 +21,17 @@ A beautiful, terminal-based git branch explorer built in Go with VIM keybindings
 
 ### Quick Install (Recommended)
 
-Install directly from the web with a single command:
+Install directly from GitHub with a single command:
 
 ```bash
 # Install the latest version
-curl -fsSL https://your-domain.com/install | bash
+curl -fsSL https://raw.githubusercontent.com/yourusername/gitp/latest/install.sh | bash
 
 # Or if you prefer wget
-wget -qO- https://your-domain.com/install | bash
+wget -qO- https://raw.githubusercontent.com/yourusername/gitp/latest/install.sh | bash
+
+# Or install from a specific release
+curl -fsSL https://raw.githubusercontent.com/yourusername/gitp/v1.0.0/install.sh | bash
 ```
 
 ### Build from source
