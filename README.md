@@ -16,8 +16,20 @@ A beautiful, terminal-based git branch explorer built in Go with VIM keybindings
 
 ### Prerequisites
 
-- Go 1.21 or later
+- Go 1.21 or later (for building from source)
 - Git repository with the target branch
+
+### Quick Install (Recommended)
+
+Install directly from the web with a single command:
+
+```bash
+# Install the latest version
+curl -fsSL https://your-domain.com/install | bash
+
+# Or if you prefer wget
+wget -qO- https://your-domain.com/install | bash
+```
 
 ### Build from source
 
@@ -32,8 +44,24 @@ make deps
 # Build the application
 make build
 
-# Install to system (optional)
+# Install to system
 make install
+
+# Or build release binaries for distribution
+make release
+```
+
+### Manual Installation
+
+If you prefer to install manually:
+
+```bash
+# Download the appropriate binary for your system
+# Visit: https://github.com/yourusername/gitp/releases
+
+# Make it executable and move to PATH
+chmod +x gitp-darwin-amd64
+sudo mv gitp-darwin-amd64 /usr/local/bin/gitp
 ```
 
 ## Usage
@@ -128,6 +156,41 @@ make test
 
 ```bash
 make build
+```
+
+## Distribution
+
+### Building Release Binaries
+
+To create distributable binaries for all platforms:
+
+```bash
+make release
+```
+
+This will:
+
+- Build binaries for macOS (Intel/Apple Silicon), Linux (Intel/ARM), and Windows
+- Create SHA256 checksums for verification
+- Generate an install script for easy distribution
+
+### Setting Up Web Installation
+
+1. **Build release binaries**: `make release`
+2. **Upload to your hosting service** (GitHub Releases, your website, etc.)
+3. **Host the install script**: Upload `web-install.sh` to your domain
+4. **Update URLs**: Edit `web-install.sh` with your actual download URLs
+5. **Users can install with**: `curl -fsSL https://your-domain.com/install | bash`
+
+### Release Workflow
+
+```bash
+# 1. Update version in scripts/build-release.sh
+# 2. Build release binaries
+make release
+
+# 3. Upload dist/ directory contents to your hosting service
+# 4. Update your website with the curl | bash install command
 ```
 
 ## Contributing

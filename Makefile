@@ -30,6 +30,10 @@ test:
 install: build
 	cp bin/gitp /usr/local/bin/
 
+# Build release binaries for distribution
+release: scripts/build-release.sh
+	./scripts/build-release.sh
+
 # Development mode with auto-reload
 dev:
 	@if [ -z "$(BRANCH)" ]; then \
