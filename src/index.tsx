@@ -11,9 +11,9 @@ const App = () => {
   const [selectedIndex, setSelectedIndex] = useState<number>(0);
   const [commits, setCommits] = useState<string[]>([]);
   const [selectedCommit, setSelectedCommit] = useState<number>(0);
-  const [view, setView] = useState<"branches" | "commits" | "files" | "diff">(
-    "branches"
-  );
+  const [view, setView] = useState<
+    "branches" | "commits" | "files" | "diff" | "file"
+  >("branches");
   const [files, setFiles] = useState<string[]>([]);
   const [selectedFile, setSelectedFile] = useState<number>(0);
   const [commitMetadata, setCommitMetadata] = useState<any>(null);
@@ -24,6 +24,10 @@ const App = () => {
   );
   const [visualStart, setVisualStart] = useState<number>(0);
   const [visualEnd, setVisualEnd] = useState<number>(0);
+  const [fileContent, setFileContent] = useState<string>("");
+  const [fileScrollOffset, setFileScrollOffset] = useState<number>(0);
+  const [fileCursor, setFileCursor] = useState<number>(0);
+  const [currentFilePath, setCurrentFilePath] = useState<string>("");
   const { exit } = useApp();
 
   useEffect(() => {
@@ -156,6 +160,27 @@ const App = () => {
     }
   };
 
+  const loadFileAtCommit = (commitHash: string, filePath: string) => {
+    try {
+      // Use --textconv to respect Git attributes and decode binary-as-text if configured
+      const output = execSync(`git show --textconv ${commitHash}:${filePath}`, {
+        encoding: "utf8",
+        stdio: ["ignore", "pipe", "pipe"],
+      });
+      setFileContent(output);
+      setFileScrollOffset(0);
+      setFileCursor(0);
+      setCurrentFilePath(filePath);
+    } catch (error) {
+      setFileContent(
+        `Unable to display this file at the selected commit. It may be binary or unavailable.\n\nDetails: ${error.message}`
+      );
+      setFileScrollOffset(0);
+      setFileCursor(0);
+      setCurrentFilePath(filePath);
+    }
+  };
+
   const copyToClipboard = (text: string) => {
     const platform = process.platform;
     let command: string;
@@ -199,6 +224,15 @@ const App = () => {
       }
     }
 
+    if (view === "file" && fileContent) {
+      const lines = fileContent.split("\n");
+      if (visualMode === "line") {
+        return lines.slice(start, end + 1).join("\n");
+      } else {
+        return lines.slice(start, end + 1).join("\n");
+      }
+    }
+
     return "";
   };
 
@@ -219,6 +253,10 @@ const App = () => {
       } else if (view === "files") {
         setView("commits");
         setSelectedFile(0);
+      } else if (view === "file") {
+        setView("files");
+        setFileScrollOffset(0);
+        setFileCursor(0);
       } else if (view === "diff") {
         setView("files");
         setDiffScrollOffset(0);
@@ -229,24 +267,16 @@ const App = () => {
     }
 
     // Handle visual mode entry
-    if (input === "v" && view === "diff") {
+    if (
+      (input === "v" || input === "V") &&
+      (view === "diff" || view === "file")
+    ) {
+      const isLine = input === "V";
       if (visualMode === "none") {
-        setVisualMode("character");
-        setVisualStart(diffScrollOffset);
-        setVisualEnd(diffScrollOffset);
-      } else {
-        setVisualMode("none");
-        setVisualStart(0);
-        setVisualEnd(0);
-      }
-      return;
-    }
-
-    if (input === "V" && view === "diff") {
-      if (visualMode === "none") {
-        setVisualMode("line");
-        setVisualStart(diffScrollOffset);
-        setVisualEnd(diffScrollOffset);
+        setVisualMode(isLine ? "line" : "character");
+        const anchor = view === "diff" ? diffScrollOffset : fileCursor;
+        setVisualStart(anchor);
+        setVisualEnd(anchor);
       } else {
         setVisualMode("none");
         setVisualStart(0);
@@ -285,8 +315,8 @@ const App = () => {
         if (selectedFileObj) {
           const commitHash = commits[selectedCommit].split(" ")[0];
           loadCommitMetadata(commitHash);
-          loadDiff(commitHash);
-          setView("diff");
+          loadFileAtCommit(commitHash, selectedFileObj);
+          setView("file");
         }
       }
       return;
@@ -308,6 +338,20 @@ const App = () => {
         if (visualMode !== "none") {
           setVisualEnd(newOffset);
         }
+      } else if (view === "file") {
+        const lines = fileContent ? fileContent.split("\n") : [];
+        const newCursor = Math.min(lines.length - 1, fileCursor + 1);
+        setFileCursor(newCursor);
+        const visibleLines = 20;
+        const maxOffset = Math.max(0, newCursor - (visibleLines - 1));
+        if (newCursor >= fileScrollOffset + visibleLines) {
+          setFileScrollOffset(
+            Math.min(maxOffset, Math.max(0, lines.length - visibleLines))
+          );
+        }
+        if (visualMode !== "none") {
+          setVisualEnd(newCursor);
+        }
       }
       return;
     }
@@ -326,6 +370,15 @@ const App = () => {
         // Update visual selection if in visual mode
         if (visualMode !== "none") {
           setVisualEnd(newOffset);
+        }
+      } else if (view === "file") {
+        const newCursor = Math.max(0, fileCursor - 1);
+        setFileCursor(newCursor);
+        if (newCursor < fileScrollOffset) {
+          setFileScrollOffset(newCursor);
+        }
+        if (visualMode !== "none") {
+          setVisualEnd(newCursor);
         }
       }
       return;
@@ -361,6 +414,46 @@ const App = () => {
         if (visualMode !== "none") {
           setVisualEnd(newOffset);
         }
+      }
+    }
+
+    if (view === "file") {
+      const lines = fileContent ? fileContent.split("\n") : [];
+      const visibleLines = 20;
+      if (key.ctrl && input === "d") {
+        const newCursor = Math.min(lines.length - 1, fileCursor + 10);
+        setFileCursor(newCursor);
+        const newOffset = Math.min(
+          Math.max(0, fileScrollOffset + 10),
+          Math.max(0, lines.length - visibleLines)
+        );
+        setFileScrollOffset(newOffset);
+        if (visualMode !== "none") setVisualEnd(newCursor);
+        return;
+      }
+      if (key.ctrl && input === "u") {
+        const newCursor = Math.max(0, fileCursor - 10);
+        setFileCursor(newCursor);
+        const newOffset = Math.max(0, fileScrollOffset - 10);
+        setFileScrollOffset(newOffset);
+        if (visualMode !== "none") setVisualEnd(newCursor);
+        return;
+      }
+      if (key.pageUp) {
+        const newCursor = Math.max(0, fileCursor - 10);
+        setFileCursor(newCursor);
+        const newOffset = Math.max(0, fileScrollOffset - 10);
+        setFileScrollOffset(newOffset);
+        if (visualMode !== "none") setVisualEnd(newCursor);
+      } else if (key.pageDown) {
+        const newCursor = Math.min(lines.length - 1, fileCursor + 10);
+        setFileCursor(newCursor);
+        const newOffset = Math.min(
+          Math.max(0, fileScrollOffset + 10),
+          Math.max(0, lines.length - visibleLines)
+        );
+        setFileScrollOffset(newOffset);
+        if (visualMode !== "none") setVisualEnd(newCursor);
       }
     }
   });
@@ -418,6 +511,57 @@ const App = () => {
       ))}
     </Box>
   );
+
+  const renderFile = () => {
+    const lines = fileContent ? fileContent.split("\n") : ["(empty file)"];
+    const visibleLines = 20;
+    const startLine = Math.max(
+      0,
+      Math.min(fileScrollOffset, Math.max(0, lines.length - visibleLines))
+    );
+    const endLine = Math.min(startLine + visibleLines, lines.length);
+
+    return (
+      <Box flexDirection="column" height="100%">
+        <Box flexDirection="column" marginBottom={1}>
+          <Text bold color="cyan">
+            Commit: {commitMetadata?.hash}
+          </Text>
+          <Text color="white">File: {currentFilePath}</Text>
+          <Box marginTop={1}>
+            <Text color="yellow">
+              j/k or ↑/↓ to move line, Ctrl+d/Ctrl+u half-page, v/V visual mode,
+              y yank, Esc back
+            </Text>
+          </Box>
+        </Box>
+
+        <Box flexDirection="column" flexGrow={1}>
+          {lines.slice(startLine, endLine).map((content, idx) => {
+            const globalIndex = startLine + idx;
+            const isCursor =
+              globalIndex === fileCursor && visualMode === "none";
+            const isSelected =
+              visualMode !== "none" &&
+              globalIndex >= Math.min(visualStart, visualEnd) &&
+              globalIndex <= Math.max(visualStart, visualEnd);
+            const lineNo = (globalIndex + 1).toString().padStart(6, " ");
+            return (
+              <Text
+                key={globalIndex}
+                color={isSelected ? "black" : isCursor ? "black" : "white"}
+                backgroundColor={
+                  isSelected ? "yellow" : isCursor ? "cyan" : undefined
+                }
+              >
+                {lineNo} | {content}
+              </Text>
+            );
+          })}
+        </Box>
+      </Box>
+    );
+  };
 
   const parseDiffContent = (content: string) => {
     const lines = content.split("\n");
@@ -665,6 +809,7 @@ const App = () => {
       {view === "commits" && renderCommits()}
       {view === "files" && renderFiles()}
       {view === "diff" && renderDiff()}
+      {view === "file" && renderFile()}
       {view !== "diff" && (
         <Box marginTop={1}>
           <Text color="gray">Press Esc to go back/exit</Text>
