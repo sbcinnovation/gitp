@@ -28,11 +28,37 @@ const App = () => {
   const [fileScrollOffset, setFileScrollOffset] = useState<number>(0);
   const [fileCursor, setFileCursor] = useState<number>(0);
   const [currentFilePath, setCurrentFilePath] = useState<string>("");
+  const [terminalWidth, setTerminalWidth] = useState<number>(
+    typeof process !== "undefined" && process.stdout && process.stdout.columns
+      ? process.stdout.columns
+      : 80
+  );
   const { exit } = useApp();
 
   useEffect(() => {
     loadBranches();
     loadCurrentBranch();
+  }, []);
+
+  // Track terminal size to support dynamic layout
+  useEffect(() => {
+    const handleResize = () => {
+      try {
+        setTerminalWidth(process.stdout?.columns || 80);
+      } catch {
+        setTerminalWidth(80);
+      }
+    };
+    if (process && (process.stdout as any)?.on) {
+      (process.stdout as any).on("resize", handleResize);
+    }
+    return () => {
+      if (process && (process.stdout as any)?.off) {
+        (process.stdout as any).off("resize", handleResize);
+      } else if (process && (process.stdout as any)?.removeListener) {
+        (process.stdout as any).removeListener("resize", handleResize);
+      }
+    };
   }, []);
 
   const loadBranches = () => {
@@ -148,11 +174,15 @@ const App = () => {
     }
   };
 
-  const loadDiff = (commitHash) => {
+  const loadDiff = (commitHash: string, filePath?: string) => {
     try {
-      const output = execSync(`git show --stat --patch ${commitHash}`, {
-        encoding: "utf8",
-      });
+      const fileArg = filePath ? ` -- "${filePath}"` : "";
+      const output = execSync(
+        `git show --stat --patch ${commitHash}${fileArg}`,
+        {
+          encoding: "utf8",
+        }
+      );
       setDiffContent(output);
       setDiffScrollOffset(0);
     } catch (error) {
@@ -315,8 +345,8 @@ const App = () => {
         if (selectedFileObj) {
           const commitHash = commits[selectedCommit].split(" ")[0];
           loadCommitMetadata(commitHash);
-          loadFileAtCommit(commitHash, selectedFileObj);
-          setView("file");
+          loadDiff(commitHash, selectedFileObj);
+          setView("diff");
         }
       }
       return;
@@ -710,9 +740,139 @@ const App = () => {
     }
 
     const parsed = parseDiffContent(diffContent);
+    const isWide = terminalWidth >= 100;
     const visibleLines = 20;
-    const startLine = diffScrollOffset;
-    const endLine = Math.min(startLine + visibleLines, parsed.fileDiffs.length);
+
+    // Build renderable rows for the first (or only) file diff
+    const file = parsed.fileDiffs[0];
+
+    type UnifiedRow = { kind: "unified"; text: string; color: any };
+    type SplitRow = {
+      kind: "split";
+      leftText: string;
+      leftType: "removed" | "context" | "empty";
+      rightText: string;
+      rightType: "added" | "context" | "empty";
+    };
+
+    const clampText = (text: string, width: number) => {
+      if (width <= 0) return "";
+      if (!text) return "";
+      return text.length > width ? text.slice(0, width) : text;
+    };
+
+    const buildUnifiedRows = (): UnifiedRow[] => {
+      if (!file) return [];
+      const rows: UnifiedRow[] = [];
+      file.hunks.forEach((hunk) => {
+        // Hunk header
+        rows.push({ kind: "unified", text: hunk.header, color: "cyan" });
+        hunk.lines.forEach((line) => {
+          const color =
+            line.type === "added"
+              ? "green"
+              : line.type === "removed"
+              ? "red"
+              : "white";
+          rows.push({ kind: "unified", text: line.content, color });
+        });
+      });
+      return rows;
+    };
+
+    const buildSplitRows = (): SplitRow[] => {
+      if (!file) return [];
+      const rows: SplitRow[] = [];
+      file.hunks.forEach((hunk) => {
+        // For readability, keep the hunk header as a full-width (unified) row by encoding as context on both sides
+        rows.push({
+          kind: "split",
+          leftText: hunk.header,
+          leftType: "context",
+          rightText: hunk.header,
+          rightType: "context",
+        });
+
+        const lines = hunk.lines;
+        let i = 0;
+        while (i < lines.length) {
+          const line = lines[i];
+          if (line.type === "context") {
+            const text = line.content.replace(/^\s/, "");
+            rows.push({
+              kind: "split",
+              leftText: text,
+              leftType: "context",
+              rightText: text,
+              rightType: "context",
+            });
+            i += 1;
+            continue;
+          }
+
+          if (line.type === "removed") {
+            const removed: string[] = [];
+            while (i < lines.length && lines[i].type === "removed") {
+              removed.push(lines[i].content.replace(/^-/u, ""));
+              i += 1;
+            }
+            const added: string[] = [];
+            let j = i;
+            while (j < lines.length && lines[j].type === "added") {
+              added.push(lines[j].content.replace(/^\+/u, ""));
+              j += 1;
+            }
+            // Pair them
+            const maxLen = Math.max(removed.length, added.length);
+            for (let k = 0; k < maxLen; k++) {
+              rows.push({
+                kind: "split",
+                leftText: removed[k] ?? "",
+                leftType: removed[k] != null ? "removed" : "empty",
+                rightText: added[k] ?? "",
+                rightType: added[k] != null ? "added" : "empty",
+              });
+            }
+            i = j;
+            continue;
+          }
+
+          if (line.type === "added") {
+            const added: string[] = [];
+            while (i < lines.length && lines[i].type === "added") {
+              added.push(lines[i].content.replace(/^\+/u, ""));
+              i += 1;
+            }
+            const maxLen = Math.max(0, added.length);
+            for (let k = 0; k < maxLen; k++) {
+              rows.push({
+                kind: "split",
+                leftText: "",
+                leftType: "empty",
+                rightText: added[k] ?? "",
+                rightType: "added",
+              });
+            }
+            continue;
+          }
+
+          // Fallback safety
+          rows.push({
+            kind: "split",
+            leftText: line.content,
+            leftType: "context",
+            rightText: line.content,
+            rightType: "context",
+          });
+          i += 1;
+        }
+      });
+      return rows;
+    };
+
+    const startRow = diffScrollOffset;
+    const panelGap = 3; // space for divider " | "
+    const panelWidth = Math.max(10, Math.floor((terminalWidth - panelGap) / 2));
 
     return (
       <Box flexDirection="column" height="100%">
@@ -756,46 +916,63 @@ const App = () => {
               mode, y to yank, Esc to go back
             </Text>
           </Box>
-          {parsed.fileDiffs.slice(startLine, endLine).map((file, fileIndex) => (
-            <Box key={fileIndex} flexDirection="column" marginBottom={1}>
+          {!file && <Text color="gray">No diff content to display.</Text>}
+          {file && (
+            <Box flexDirection="column">
               <Text bold color="blue">
                 {file.header}
               </Text>
               <Text color="magenta">--- a/{file.oldPath}</Text>
               <Text color="magenta">+++ b/{file.newPath}</Text>
 
-              {file.hunks.map((hunk, hunkIndex) => (
-                <Box key={hunkIndex} flexDirection="column">
-                  <Text color="cyan">{hunk.header}</Text>
-                  {hunk.lines.map((line, lineIndex) => {
-                    const globalLineIndex = startLine + fileIndex + lineIndex;
-                    const isSelected =
-                      visualMode !== "none" &&
-                      globalLineIndex >= Math.min(visualStart, visualEnd) &&
-                      globalLineIndex <= Math.max(visualStart, visualEnd);
-
+              {/* Scrolling area */}
+              {(() => {
+                if (isWide) {
+                  const rows = buildSplitRows();
+                  const endRow = Math.min(startRow + visibleLines, rows.length);
+                  return rows.slice(startRow, endRow).map((row, idx) => {
+                    const leftColor =
+                      row.leftType === "removed"
+                        ? "red"
+                        : row.leftType === "context"
+                        ? "white"
+                        : "gray";
+                    const rightColor =
+                      row.rightType === "added"
+                        ? "green"
+                        : row.rightType === "context"
+                        ? "white"
+                        : "gray";
                     return (
-                      <Text
-                        key={lineIndex}
-                        color={
-                          isSelected
-                            ? "black"
-                            : line.type === "added"
-                            ? "green"
-                            : line.type === "removed"
-                            ? "red"
-                            : "white"
-                        }
-                        backgroundColor={isSelected ? "yellow" : undefined}
-                      >
-                        {line.content}
-                      </Text>
+                      <Box key={idx} flexDirection="row">
+                        <Box width={panelWidth}>
+                          <Text color={leftColor}>
+                            {clampText(row.leftText, panelWidth)}
+                          </Text>
+                        </Box>
+                        <Box width={panelGap}>
+                          <Text> | </Text>
+                        </Box>
+                        <Box width={panelWidth}>
+                          <Text color={rightColor}>
+                            {clampText(row.rightText, panelWidth)}
+                          </Text>
+                        </Box>
+                      </Box>
                     );
-                  })}
-                </Box>
-              ))}
+                  });
+                } else {
+                  const rows = buildUnifiedRows();
+                  const endRow = Math.min(startRow + visibleLines, rows.length);
+                  return rows.slice(startRow, endRow).map((row, idx) => (
+                    <Text key={idx} color={row.color}>
+                      {row.text}
+                    </Text>
+                  ));
+                }
+              })()}
             </Box>
-          ))}
+          )}
         </Box>
       </Box>
     );
