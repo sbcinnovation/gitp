@@ -192,30 +192,44 @@ const App = () => {
       return;
     }
 
-    if (view === "branches") {
-      if (key.upArrow) {
-        setSelectedIndex(Math.max(0, selectedIndex - 1));
-      } else if (key.downArrow) {
+    // Vim keybindings: j/k for navigation
+    if (input === "j" || key.downArrow) {
+      if (view === "branches") {
         setSelectedIndex(Math.min(branches.length - 1, selectedIndex + 1));
-      }
-    } else if (view === "commits") {
-      if (key.upArrow) {
-        setSelectedCommit(Math.max(0, selectedCommit - 1));
-      } else if (key.downArrow) {
+      } else if (view === "commits") {
         setSelectedCommit(Math.min(commits.length - 1, selectedCommit + 1));
-      }
-    } else if (view === "files") {
-      if (key.upArrow) {
-        setSelectedFile(Math.max(0, selectedFile - 1));
-      } else if (key.downArrow) {
+      } else if (view === "files") {
         setSelectedFile(Math.min(files.length - 1, selectedFile + 1));
-      }
-    } else if (view === "diff") {
-      if (key.upArrow) {
-        setDiffScrollOffset(Math.max(0, diffScrollOffset - 1));
-      } else if (key.downArrow) {
+      } else if (view === "diff") {
         setDiffScrollOffset(diffScrollOffset + 1);
-      } else if (key.pageUp) {
+      }
+      return;
+    }
+
+    if (input === "k" || key.upArrow) {
+      if (view === "branches") {
+        setSelectedIndex(Math.max(0, selectedIndex - 1));
+      } else if (view === "commits") {
+        setSelectedCommit(Math.max(0, selectedCommit - 1));
+      } else if (view === "files") {
+        setSelectedFile(Math.max(0, selectedFile - 1));
+      } else if (view === "diff") {
+        setDiffScrollOffset(Math.max(0, diffScrollOffset - 1));
+      }
+      return;
+    }
+
+    // Vim keybindings: Ctrl+d/Ctrl+u for half-page scrolling in diff view
+    if (view === "diff") {
+      if (key.ctrl && input === "d") {
+        setDiffScrollOffset(diffScrollOffset + 10);
+        return;
+      }
+      if (key.ctrl && input === "u") {
+        setDiffScrollOffset(Math.max(0, diffScrollOffset - 10));
+        return;
+      }
+      if (key.pageUp) {
         setDiffScrollOffset(Math.max(0, diffScrollOffset - 10));
       } else if (key.pageDown) {
         setDiffScrollOffset(diffScrollOffset + 10);
@@ -230,7 +244,7 @@ const App = () => {
       </Text>
       <Text color="blue">Current Branch: {currentBranch}</Text>
       <Text color="yellow">
-        Select a branch (↑↓ to navigate, Enter to select, Esc to exit):
+        Select a branch (↑↓ or j/k to navigate, Enter to select, Esc to exit):
       </Text>
       {branches.map((branch, index) => (
         <Text key={index} color={index === selectedIndex ? "green" : "white"}>
@@ -247,7 +261,8 @@ const App = () => {
         Commits in {branches[selectedIndex]}
       </Text>
       <Text color="yellow">
-        Select a commit (↑↓ to navigate, Enter to select, Esc to go back):
+        Select a commit (↑↓ or j/k to navigate, Enter to select, Esc to go
+        back):
       </Text>
       {commits.map((commit, index) => (
         <Text key={index} color={index === selectedCommit ? "green" : "white"}>
@@ -264,7 +279,8 @@ const App = () => {
         Files in commit: {commits[selectedCommit]}
       </Text>
       <Text color="yellow">
-        Select a file (↑↓ to navigate, Enter to view diff, Esc to go back):
+        Select a file (↑↓ or j/k to navigate, Enter to view diff, Esc to go
+        back):
       </Text>
       {files.map((file, index) => (
         <Text key={index} color={index === selectedFile ? "green" : "white"}>
@@ -459,7 +475,9 @@ const App = () => {
         {/* Diff Content */}
         <Box flexDirection="column" flexGrow={1}>
           <Box marginBottom={1}>
-            <Text color="yellow">↑↓ to scroll, Esc to go back</Text>
+            <Text color="yellow">
+              ↑↓ or j/k to scroll, Ctrl+d/Ctrl+u for half-page, Esc to go back
+            </Text>
           </Box>
           {parsed.fileDiffs.slice(startLine, endLine).map((file, fileIndex) => (
             <Box key={fileIndex} flexDirection="column" marginBottom={1}>
