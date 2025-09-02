@@ -19,6 +19,24 @@ const App = () => {
   const [commitMetadata, setCommitMetadata] = useState<any>(null);
   const [diffContent, setDiffContent] = useState<string>("");
   const [diffScrollOffset, setDiffScrollOffset] = useState<number>(0);
+  const [diffCursor, setDiffCursor] = useState<number>(0);
+  const [diffDisplayRows, setDiffDisplayRows] = useState<
+    Array<
+      | {
+          kind: "unified";
+          unifiedText: string;
+          unifiedColor: any;
+        }
+      | {
+          kind: "split";
+          leftText: string;
+          leftType: "removed" | "context" | "empty";
+          rightText: string;
+          rightType: "added" | "context" | "empty";
+        }
+    >
+  >([]);
+  const [diffIsWide, setDiffIsWide] = useState<boolean>(false);
   const [visualMode, setVisualMode] = useState<"none" | "character" | "line">(
     "none"
   );
@@ -185,6 +203,7 @@ const App = () => {
       );
       setDiffContent(output);
       setDiffScrollOffset(0);
+      setDiffCursor(0);
     } catch (error) {
       console.error("Error loading diff:", error.message);
     }
@@ -245,13 +264,13 @@ const App = () => {
     const end = Math.max(visualStart, visualEnd);
 
     if (view === "diff" && diffContent) {
-      const lines = diffContent.split("\n");
-      if (visualMode === "line") {
-        return lines.slice(start, end + 1).join("\n");
-      } else {
-        // Character mode - for simplicity, we'll treat it as line selection
-        return lines.slice(start, end + 1).join("\n");
-      }
+      const rows = diffDisplayRows;
+      const slice = rows.slice(start, end + 1);
+      const toText = (row: (typeof rows)[number]) => {
+        if ((row as any).kind === "unified") return (row as any).unifiedText;
+        return `${(row as any).leftText} | ${(row as any).rightText}`;
+      };
+      return slice.map(toText).join("\n");
     }
 
     if (view === "file" && fileContent) {
@@ -304,7 +323,7 @@ const App = () => {
       const isLine = input === "V";
       if (visualMode === "none") {
         setVisualMode(isLine ? "line" : "character");
-        const anchor = view === "diff" ? diffScrollOffset : fileCursor;
+        const anchor = view === "diff" ? diffCursor : fileCursor;
         setVisualStart(anchor);
         setVisualEnd(anchor);
       } else {
@@ -361,12 +380,15 @@ const App = () => {
       } else if (view === "files") {
         setSelectedFile(Math.min(files.length - 1, selectedFile + 1));
       } else if (view === "diff") {
-        const newOffset = diffScrollOffset + 1;
-        setDiffScrollOffset(newOffset);
-
-        // Update visual selection if in visual mode
+        const total = diffDisplayRows.length;
+        const visibleLines = 20;
+        const newCursor = Math.min(total - 1, diffCursor + 1);
+        setDiffCursor(newCursor);
+        if (newCursor >= diffScrollOffset + visibleLines) {
+          setDiffScrollOffset(Math.max(0, newCursor - (visibleLines - 1)));
+        }
         if (visualMode !== "none") {
-          setVisualEnd(newOffset);
+          setVisualEnd(newCursor);
         }
       } else if (view === "file") {
         const lines = fileContent ? fileContent.split("\n") : [];
@@ -394,12 +416,13 @@ const App = () => {
       } else if (view === "files") {
         setSelectedFile(Math.max(0, selectedFile - 1));
       } else if (view === "diff") {
-        const newOffset = Math.max(0, diffScrollOffset - 1);
-        setDiffScrollOffset(newOffset);
-
-        // Update visual selection if in visual mode
+        const newCursor = Math.max(0, diffCursor - 1);
+        setDiffCursor(newCursor);
+        if (newCursor < diffScrollOffset) {
+          setDiffScrollOffset(newCursor);
+        }
         if (visualMode !== "none") {
-          setVisualEnd(newOffset);
+          setVisualEnd(newCursor);
         }
       } else if (view === "file") {
         const newCursor = Math.max(0, fileCursor - 1);
@@ -416,34 +439,42 @@ const App = () => {
 
     // Vim keybindings: Ctrl+d/Ctrl+u for half-page scrolling in diff view
     if (view === "diff") {
+      const total = diffDisplayRows.length;
+      const visibleLines = 20;
       if (key.ctrl && input === "d") {
-        const newOffset = diffScrollOffset + 10;
+        const newCursor = Math.min(total - 1, diffCursor + 10);
+        setDiffCursor(newCursor);
+        const newOffset = Math.min(
+          Math.max(0, diffScrollOffset + 10),
+          Math.max(0, total - visibleLines)
+        );
         setDiffScrollOffset(newOffset);
-        if (visualMode !== "none") {
-          setVisualEnd(newOffset);
-        }
+        if (visualMode !== "none") setVisualEnd(newCursor);
         return;
       }
       if (key.ctrl && input === "u") {
+        const newCursor = Math.max(0, diffCursor - 10);
+        setDiffCursor(newCursor);
         const newOffset = Math.max(0, diffScrollOffset - 10);
         setDiffScrollOffset(newOffset);
-        if (visualMode !== "none") {
-          setVisualEnd(newOffset);
-        }
+        if (visualMode !== "none") setVisualEnd(newCursor);
         return;
       }
       if (key.pageUp) {
+        const newCursor = Math.max(0, diffCursor - 10);
+        setDiffCursor(newCursor);
         const newOffset = Math.max(0, diffScrollOffset - 10);
         setDiffScrollOffset(newOffset);
-        if (visualMode !== "none") {
-          setVisualEnd(newOffset);
-        }
+        if (visualMode !== "none") setVisualEnd(newCursor);
       } else if (key.pageDown) {
-        const newOffset = diffScrollOffset + 10;
+        const newCursor = Math.min(total - 1, diffCursor + 10);
+        setDiffCursor(newCursor);
+        const newOffset = Math.min(
+          Math.max(0, diffScrollOffset + 10),
+          Math.max(0, total - visibleLines)
+        );
         setDiffScrollOffset(newOffset);
-        if (visualMode !== "none") {
-          setVisualEnd(newOffset);
-        }
+        if (visualMode !== "none") setVisualEnd(newCursor);
       }
     }
 
@@ -870,6 +901,22 @@ const App = () => {
       return rows;
     };
 
+    // Maintain a stable list of rows for navigation and selection
+    const computedRows = isWide
+      ? (buildSplitRows() as any[])
+      : (buildUnifiedRows() as any[]);
+    useEffect(() => {
+      setDiffIsWide(isWide);
+      setDiffDisplayRows(computedRows);
+      // Clamp cursor/scroll
+      const total = computedRows.length;
+      setDiffCursor((c) => Math.max(0, Math.min(c, Math.max(0, total - 1))));
+      setDiffScrollOffset((o) =>
+        Math.max(0, Math.min(o, Math.max(0, total - visibleLines)))
+      );
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [diffContent, terminalWidth]);
+
     const startRow = diffScrollOffset;
     const panelGap = 3; // space for divider " | "
     const panelWidth = Math.max(10, Math.floor((terminalWidth - panelGap) / 2));
@@ -943,18 +990,39 @@ const App = () => {
                         : row.rightType === "context"
                         ? "white"
                         : "gray";
+                    const globalIndex = startRow + idx;
+                    const isCursor =
+                      visualMode === "none" && globalIndex === diffCursor;
+                    const isSelected =
+                      visualMode !== "none" &&
+                      globalIndex >= Math.min(visualStart, visualEnd) &&
+                      globalIndex <= Math.max(visualStart, visualEnd);
+                    const backgroundColor = isSelected
+                      ? "yellow"
+                      : isCursor
+                      ? "cyan"
+                      : undefined;
+                    const leftFg = isSelected || isCursor ? "black" : leftColor;
+                    const rightFg =
+                      isSelected || isCursor ? "black" : rightColor;
                     return (
                       <Box key={idx} flexDirection="row">
                         <Box width={panelWidth}>
-                          <Text color={leftColor}>
+                          <Text
+                            color={leftFg}
+                            backgroundColor={backgroundColor}
+                          >
                             {clampText(row.leftText, panelWidth)}
                           </Text>
                         </Box>
                         <Box width={panelGap}>
-                          <Text> | </Text>
+                          <Text backgroundColor={backgroundColor}> | </Text>
                         </Box>
                         <Box width={panelWidth}>
-                          <Text color={rightColor}>
+                          <Text
+                            color={rightFg}
+                            backgroundColor={backgroundColor}
+                          >
                             {clampText(row.rightText, panelWidth)}
                           </Text>
                         </Box>
@@ -964,11 +1032,30 @@ const App = () => {
                 } else {
                   const rows = buildUnifiedRows();
                   const endRow = Math.min(startRow + visibleLines, rows.length);
-                  return rows.slice(startRow, endRow).map((row, idx) => (
-                    <Text key={idx} color={row.color}>
-                      {row.text}
-                    </Text>
-                  ));
+                  return rows.slice(startRow, endRow).map((row, idx) => {
+                    const globalIndex = startRow + idx;
+                    const isCursor =
+                      visualMode === "none" && globalIndex === diffCursor;
+                    const isSelected =
+                      visualMode !== "none" &&
+                      globalIndex >= Math.min(visualStart, visualEnd) &&
+                      globalIndex <= Math.max(visualStart, visualEnd);
+                    const backgroundColor = isSelected
+                      ? "yellow"
+                      : isCursor
+                      ? "cyan"
+                      : undefined;
+                    const color = isSelected || isCursor ? "black" : row.color;
+                    return (
+                      <Text
+                        key={idx}
+                        color={color}
+                        backgroundColor={backgroundColor}
+                      >
+                        {row.text}
+                      </Text>
+                    );
+                  });
                 }
               })()}
             </Box>
