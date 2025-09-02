@@ -34,7 +34,22 @@ build: install
 # Create portable script
 binary: install
 	mkdir -p dist
-	cp src/index.tsx dist/gitp
+	@echo '#!/usr/bin/env bun' > dist/gitp
+	@echo '' >> dist/gitp
+	@echo '// Gitp - Git Branch Explorer' >> dist/gitp
+	@echo '// This script runs the gitp application' >> dist/gitp
+	@echo '' >> dist/gitp
+	@echo 'import { join } from "path";' >> dist/gitp
+	@echo 'import { spawn } from "child_process";' >> dist/gitp
+	@echo '' >> dist/gitp
+	@echo '// Project root directory (embedded during build)' >> dist/gitp
+	@echo 'const PROJECT_ROOT = "$(shell pwd)";' >> dist/gitp
+	@echo 'const scriptPath = join(PROJECT_ROOT, "src", "index.tsx");' >> dist/gitp
+	@echo '' >> dist/gitp
+	@echo '// Change to project directory to ensure node_modules are found' >> dist/gitp
+	@echo 'process.chdir(PROJECT_ROOT);' >> dist/gitp
+	@echo '' >> dist/gitp
+	@echo 'spawn("bun", [scriptPath], { stdio: "inherit" });' >> dist/gitp
 	chmod +x dist/gitp
 
 # Install binary to system PATH
