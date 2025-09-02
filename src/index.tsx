@@ -3,18 +3,18 @@
 import React, { useState, useEffect } from "react";
 import { render, Box, Text, useInput, useApp } from "ink";
 import { execSync } from "child_process";
-import { readdirSync, readFileSync } from "fs";
-import { join } from "path";
 
 const App = () => {
-  const [branches, setBranches] = useState([]);
-  const [currentBranch, setCurrentBranch] = useState("");
-  const [selectedIndex, setSelectedIndex] = useState(0);
-  const [commits, setCommits] = useState([]);
-  const [selectedCommit, setSelectedCommit] = useState(0);
-  const [view, setView] = useState("branches"); // 'branches', 'commits', 'files'
-  const [files, setFiles] = useState([]);
-  const [selectedFile, setSelectedFile] = useState(0);
+  const [branches, setBranches] = useState<string[]>([]);
+  const [currentBranch, setCurrentBranch] = useState<string>("");
+  const [selectedIndex, setSelectedIndex] = useState<number>(0);
+  const [commits, setCommits] = useState<string[]>([]);
+  const [selectedCommit, setSelectedCommit] = useState<number>(0);
+  const [view, setView] = useState<"branches" | "commits" | "files">(
+    "branches"
+  );
+  const [files, setFiles] = useState<string[]>([]);
+  const [selectedFile, setSelectedFile] = useState<number>(0);
   const { exit } = useApp();
 
   useEffect(() => {
@@ -106,22 +106,22 @@ const App = () => {
           setView("commits");
         }
       } else if (view === "commits") {
-        const selectedCommit = commits[selectedCommit];
-        if (selectedCommit) {
-          loadFiles(selectedCommit);
+        const selectedCommitObj = commits[selectedCommit];
+        if (selectedCommitObj) {
+          loadFiles(selectedCommitObj);
           setView("files");
         }
       } else if (view === "files") {
-        const selectedFile = files[selectedFile];
-        if (selectedFile) {
+        const selectedFileObj = files[selectedFile];
+        if (selectedFileObj) {
           try {
             const diff = execSync(
               `git show ${
                 commits[selectedCommit].split(" ")[0]
-              }:${selectedFile}`,
+              }:${selectedFileObj}`,
               { encoding: "utf8" }
             );
-            console.log(`\n=== ${selectedFile} ===\n${diff}\n`);
+            console.log(`\n=== ${selectedFileObj} ===\n${diff}\n`);
           } catch (error) {
             console.error(`Error showing file: ${error.message}`);
           }
