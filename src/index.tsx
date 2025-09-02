@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from "react";
 import { render, Box, Text, useInput, useApp } from "ink";
 import { execSync } from "child_process";
+import { exec } from "child_process";
 
 const App = () => {
   const [branches, setBranches] = useState<string[]>([]);
@@ -18,6 +19,11 @@ const App = () => {
   const [commitMetadata, setCommitMetadata] = useState<any>(null);
   const [diffContent, setDiffContent] = useState<string>("");
   const [diffScrollOffset, setDiffScrollOffset] = useState<number>(0);
+  const [visualMode, setVisualMode] = useState<"none" | "character" | "line">(
+    "none"
+  );
+  const [visualStart, setVisualStart] = useState<number>(0);
+  const [visualEnd, setVisualEnd] = useState<number>(0);
   const { exit } = useApp();
 
   useEffect(() => {
@@ -150,8 +156,63 @@ const App = () => {
     }
   };
 
+  const copyToClipboard = (text: string) => {
+    const platform = process.platform;
+    let command: string;
+
+    if (platform === "darwin") {
+      command = `echo "${text.replace(/"/g, '\\"')}" | pbcopy`;
+    } else if (platform === "linux") {
+      command = `echo "${text.replace(
+        /"/g,
+        '\\"'
+      )}" | xclip -selection clipboard`;
+    } else if (platform === "win32") {
+      command = `echo "${text.replace(/"/g, '\\"')}" | clip`;
+    } else {
+      console.log("Clipboard not supported on this platform");
+      return;
+    }
+
+    exec(command, (error) => {
+      if (error) {
+        console.error("Error copying to clipboard:", error.message);
+      } else {
+        console.log("Text copied to clipboard!");
+      }
+    });
+  };
+
+  const getSelectedText = () => {
+    if (visualMode === "none") return "";
+
+    const start = Math.min(visualStart, visualEnd);
+    const end = Math.max(visualStart, visualEnd);
+
+    if (view === "diff" && diffContent) {
+      const lines = diffContent.split("\n");
+      if (visualMode === "line") {
+        return lines.slice(start, end + 1).join("\n");
+      } else {
+        // Character mode - for simplicity, we'll treat it as line selection
+        return lines.slice(start, end + 1).join("\n");
+      }
+    }
+
+    return "";
+  };
+
   useInput((input, key) => {
+    // Handle escape key
     if (key.escape) {
+      if (visualMode !== "none") {
+        // Exit visual mode
+        setVisualMode("none");
+        setVisualStart(0);
+        setVisualEnd(0);
+        return;
+      }
+
       if (view === "commits") {
         setView("branches");
         setSelectedIndex(0);
@@ -163,6 +224,45 @@ const App = () => {
         setDiffScrollOffset(0);
       } else {
         exit();
+      }
+      return;
+    }
+
+    // Handle visual mode entry
+    if (input === "v" && view === "diff") {
+      if (visualMode === "none") {
+        setVisualMode("character");
+        setVisualStart(diffScrollOffset);
+        setVisualEnd(diffScrollOffset);
+      } else {
+        setVisualMode("none");
+        setVisualStart(0);
+        setVisualEnd(0);
+      }
+      return;
+    }
+
+    if (input === "V" && view === "diff") {
+      if (visualMode === "none") {
+        setVisualMode("line");
+        setVisualStart(diffScrollOffset);
+        setVisualEnd(diffScrollOffset);
+      } else {
+        setVisualMode("none");
+        setVisualStart(0);
+        setVisualEnd(0);
+      }
+      return;
+    }
+
+    // Handle yank (copy to clipboard)
+    if (input === "y" && visualMode !== "none") {
+      const selectedText = getSelectedText();
+      if (selectedText) {
+        copyToClipboard(selectedText);
+        setVisualMode("none");
+        setVisualStart(0);
+        setVisualEnd(0);
       }
       return;
     }
@@ -201,7 +301,13 @@ const App = () => {
       } else if (view === "files") {
         setSelectedFile(Math.min(files.length - 1, selectedFile + 1));
       } else if (view === "diff") {
-        setDiffScrollOffset(diffScrollOffset + 1);
+        const newOffset = diffScrollOffset + 1;
+        setDiffScrollOffset(newOffset);
+
+        // Update visual selection if in visual mode
+        if (visualMode !== "none") {
+          setVisualEnd(newOffset);
+        }
       }
       return;
     }
@@ -214,7 +320,13 @@ const App = () => {
       } else if (view === "files") {
         setSelectedFile(Math.max(0, selectedFile - 1));
       } else if (view === "diff") {
-        setDiffScrollOffset(Math.max(0, diffScrollOffset - 1));
+        const newOffset = Math.max(0, diffScrollOffset - 1);
+        setDiffScrollOffset(newOffset);
+
+        // Update visual selection if in visual mode
+        if (visualMode !== "none") {
+          setVisualEnd(newOffset);
+        }
       }
       return;
     }
@@ -222,17 +334,33 @@ const App = () => {
     // Vim keybindings: Ctrl+d/Ctrl+u for half-page scrolling in diff view
     if (view === "diff") {
       if (key.ctrl && input === "d") {
-        setDiffScrollOffset(diffScrollOffset + 10);
+        const newOffset = diffScrollOffset + 10;
+        setDiffScrollOffset(newOffset);
+        if (visualMode !== "none") {
+          setVisualEnd(newOffset);
+        }
         return;
       }
       if (key.ctrl && input === "u") {
-        setDiffScrollOffset(Math.max(0, diffScrollOffset - 10));
+        const newOffset = Math.max(0, diffScrollOffset - 10);
+        setDiffScrollOffset(newOffset);
+        if (visualMode !== "none") {
+          setVisualEnd(newOffset);
+        }
         return;
       }
       if (key.pageUp) {
-        setDiffScrollOffset(Math.max(0, diffScrollOffset - 10));
+        const newOffset = Math.max(0, diffScrollOffset - 10);
+        setDiffScrollOffset(newOffset);
+        if (visualMode !== "none") {
+          setVisualEnd(newOffset);
+        }
       } else if (key.pageDown) {
-        setDiffScrollOffset(diffScrollOffset + 10);
+        const newOffset = diffScrollOffset + 10;
+        setDiffScrollOffset(newOffset);
+        if (visualMode !== "none") {
+          setVisualEnd(newOffset);
+        }
       }
     }
   });
@@ -475,8 +603,15 @@ const App = () => {
         {/* Diff Content */}
         <Box flexDirection="column" flexGrow={1}>
           <Box marginBottom={1}>
+            {visualMode !== "none" && (
+              <Text color="cyan" bold>
+                VISUAL {visualMode.toUpperCase()} MODE - Press 'y' to yank, Esc
+                to exit
+              </Text>
+            )}
             <Text color="yellow">
-              ↑↓ or j/k to scroll, Ctrl+d/Ctrl+u for half-page, Esc to go back
+              ↑↓ or j/k to scroll, Ctrl+d/Ctrl+u for half-page, v/V for visual
+              mode, y to yank, Esc to go back
             </Text>
           </Box>
           {parsed.fileDiffs.slice(startLine, endLine).map((file, fileIndex) => (
@@ -490,20 +625,31 @@ const App = () => {
               {file.hunks.map((hunk, hunkIndex) => (
                 <Box key={hunkIndex} flexDirection="column">
                   <Text color="cyan">{hunk.header}</Text>
-                  {hunk.lines.map((line, lineIndex) => (
-                    <Text
-                      key={lineIndex}
-                      color={
-                        line.type === "added"
-                          ? "green"
-                          : line.type === "removed"
-                          ? "red"
-                          : "white"
-                      }
-                    >
-                      {line.content}
-                    </Text>
-                  ))}
+                  {hunk.lines.map((line, lineIndex) => {
+                    const globalLineIndex = startLine + fileIndex + lineIndex;
+                    const isSelected =
+                      visualMode !== "none" &&
+                      globalLineIndex >= Math.min(visualStart, visualEnd) &&
+                      globalLineIndex <= Math.max(visualStart, visualEnd);
+
+                    return (
+                      <Text
+                        key={lineIndex}
+                        color={
+                          isSelected
+                            ? "black"
+                            : line.type === "added"
+                            ? "green"
+                            : line.type === "removed"
+                            ? "red"
+                            : "white"
+                        }
+                        backgroundColor={isSelected ? "yellow" : undefined}
+                      >
+                        {line.content}
+                      </Text>
+                    );
+                  })}
                 </Box>
               ))}
             </Box>
