@@ -15,7 +15,8 @@
   },
   "devDependencies": {
     "@types/node": "^24.3.0",
-    "@types/react": "^18.2.45"
+    "@types/react": "^18.2.45",
+    "react-devtools-core": "^4.28.0"
   },
   "keywords": [
     "git",
