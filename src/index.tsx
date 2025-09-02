@@ -478,9 +478,7 @@ const App = () => {
 
   const renderCommits = () => (
     <Box flexDirection="column">
-      <Text bold color="green">
-        Commits in {branches[selectedIndex]}
-      </Text>
+      <Text color="gray">Commits in {branches[selectedIndex]}</Text>
       <Text color="yellow">
         Select a commit (↑↓ or j/k to navigate, Enter to select, Esc to go
         back):
@@ -496,13 +494,13 @@ const App = () => {
 
   const renderFiles = () => (
     <Box flexDirection="column">
-      <Text bold color="green">
-        Files in commit: {commits[selectedCommit]}
-      </Text>
-      <Text color="yellow">
-        Select a file (↑↓ or j/k to navigate, Enter to view diff, Esc to go
-        back):
-      </Text>
+      <Box flexDirection="column" marginBottom={1}>
+        <Text color="gray">Files in commit: {commits[selectedCommit]}</Text>
+        <Text color="yellow">
+          Select a file (↑↓ or j/k to navigate, Enter to view diff, Esc to go
+          back):
+        </Text>
+      </Box>
       {files.map((file, index) => (
         <Text key={index} color={index === selectedFile ? "green" : "white"}>
           {index === selectedFile ? "▶ " : "  "}
