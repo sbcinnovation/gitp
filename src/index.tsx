@@ -10,11 +10,14 @@ const App = () => {
   const [selectedIndex, setSelectedIndex] = useState<number>(0);
   const [commits, setCommits] = useState<string[]>([]);
   const [selectedCommit, setSelectedCommit] = useState<number>(0);
-  const [view, setView] = useState<"branches" | "commits" | "files">(
+  const [view, setView] = useState<"branches" | "commits" | "files" | "diff">(
     "branches"
   );
   const [files, setFiles] = useState<string[]>([]);
   const [selectedFile, setSelectedFile] = useState<number>(0);
+  const [commitMetadata, setCommitMetadata] = useState<any>(null);
+  const [diffContent, setDiffContent] = useState<string>("");
+  const [diffScrollOffset, setDiffScrollOffset] = useState<number>(0);
   const { exit } = useApp();
 
   useEffect(() => {
@@ -84,6 +87,69 @@ const App = () => {
     }
   };
 
+  const loadCommitMetadata = (commitHash) => {
+    try {
+      const output = execSync(`git show --format=fuller ${commitHash}`, {
+        encoding: "utf8",
+      });
+      const lines = output.split("\n");
+      const metadata = {
+        hash: commitHash,
+        author: "",
+        authorDate: "",
+        committer: "",
+        commitDate: "",
+        message: "",
+        subject: "",
+      };
+
+      let inMessage = false;
+      let messageLines: string[] = [];
+
+      for (const line of lines) {
+        if (line.startsWith("commit ")) {
+          metadata.hash = line.split(" ")[1];
+        } else if (line.startsWith("Author: ")) {
+          metadata.author = line.replace("Author: ", "");
+        } else if (line.startsWith("AuthorDate: ")) {
+          metadata.authorDate = line.replace("AuthorDate: ", "");
+        } else if (line.startsWith("Commit: ")) {
+          metadata.committer = line.replace("Commit: ", "");
+        } else if (line.startsWith("CommitDate: ")) {
+          metadata.commitDate = line.replace("CommitDate: ", "");
+        } else if (line.startsWith("    ") && !inMessage) {
+          inMessage = true;
+          metadata.subject = line.trim();
+          messageLines.push(line.trim());
+        } else if (
+          inMessage &&
+          (line.startsWith("    ") || line.trim() === "")
+        ) {
+          messageLines.push(line.trim());
+        } else if (inMessage && !line.startsWith("    ")) {
+          break;
+        }
+      }
+
+      metadata.message = messageLines.join("\n");
+      setCommitMetadata(metadata);
+    } catch (error) {
+      console.error("Error loading commit metadata:", error.message);
+    }
+  };
+
+  const loadDiff = (commitHash) => {
+    try {
+      const output = execSync(`git show --stat --patch ${commitHash}`, {
+        encoding: "utf8",
+      });
+      setDiffContent(output);
+      setDiffScrollOffset(0);
+    } catch (error) {
+      console.error("Error loading diff:", error.message);
+    }
+  };
+
   useInput((input, key) => {
     if (key.escape) {
       if (view === "commits") {
@@ -92,6 +158,9 @@ const App = () => {
       } else if (view === "files") {
         setView("commits");
         setSelectedFile(0);
+      } else if (view === "diff") {
+        setView("files");
+        setDiffScrollOffset(0);
       } else {
         exit();
       }
@@ -114,17 +183,10 @@ const App = () => {
       } else if (view === "files") {
         const selectedFileObj = files[selectedFile];
         if (selectedFileObj) {
-          try {
-            const diff = execSync(
-              `git show ${
-                commits[selectedCommit].split(" ")[0]
-              }:${selectedFileObj}`,
-              { encoding: "utf8" }
-            );
-            console.log(`\n=== ${selectedFileObj} ===\n${diff}\n`);
-          } catch (error) {
-            console.error(`Error showing file: ${error.message}`);
-          }
+          const commitHash = commits[selectedCommit].split(" ")[0];
+          loadCommitMetadata(commitHash);
+          loadDiff(commitHash);
+          setView("diff");
         }
       }
       return;
@@ -147,6 +209,16 @@ const App = () => {
         setSelectedFile(Math.max(0, selectedFile - 1));
       } else if (key.downArrow) {
         setSelectedFile(Math.min(files.length - 1, selectedFile + 1));
+      }
+    } else if (view === "diff") {
+      if (key.upArrow) {
+        setDiffScrollOffset(Math.max(0, diffScrollOffset - 1));
+      } else if (key.downArrow) {
+        setDiffScrollOffset(diffScrollOffset + 1);
+      } else if (key.pageUp) {
+        setDiffScrollOffset(Math.max(0, diffScrollOffset - 10));
+      } else if (key.pageDown) {
+        setDiffScrollOffset(diffScrollOffset + 10);
       }
     }
   });
@@ -192,7 +264,7 @@ const App = () => {
         Files in commit: {commits[selectedCommit]}
       </Text>
       <Text color="yellow">
-        Select a file (↑↓ to navigate, Enter to view, Esc to go back):
+        Select a file (↑↓ to navigate, Enter to view diff, Esc to go back):
       </Text>
       {files.map((file, index) => (
         <Text key={index} color={index === selectedFile ? "green" : "white"}>
@@ -203,14 +275,237 @@ const App = () => {
     </Box>
   );
 
+  const parseDiffContent = (content: string) => {
+    const lines = content.split("\n");
+    const parsed: {
+      metadata: {
+        hash: string;
+        author: string;
+        date: string;
+        message: string;
+      } | null;
+      fileStats: Array<{
+        file: string;
+        changes: string;
+        visual: string;
+      }>;
+      fileDiffs: Array<{
+        header: string;
+        oldPath: string;
+        newPath: string;
+        hunks: Array<{
+          header: string;
+          lines: Array<{
+            content: string;
+            type: "added" | "removed" | "context";
+          }>;
+        }>;
+      }>;
+    } = {
+      metadata: null,
+      fileStats: [],
+      fileDiffs: [],
+    };
+
+    let currentFile: {
+      header: string;
+      oldPath: string;
+      newPath: string;
+      hunks: Array<{
+        header: string;
+        lines: Array<{
+          content: string;
+          type: "added" | "removed" | "context";
+        }>;
+      }>;
+    } | null = null;
+    let currentHunk: {
+      header: string;
+      lines: Array<{
+        content: string;
+        type: "added" | "removed" | "context";
+      }>;
+    } | null = null;
+    let inFileDiff = false;
+
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i];
+
+      // Parse commit metadata
+      if (line.startsWith("commit ")) {
+        parsed.metadata = {
+          hash: line.split(" ")[1],
+          author: "",
+          date: "",
+          message: "",
+        };
+      } else if (line.startsWith("Author: ")) {
+        if (parsed.metadata)
+          parsed.metadata.author = line.replace("Author: ", "");
+      } else if (line.startsWith("Date: ")) {
+        if (parsed.metadata) parsed.metadata.date = line.replace("Date: ", "");
+      } else if (
+        line.startsWith("    ") &&
+        parsed.metadata &&
+        !parsed.metadata.message
+      ) {
+        if (parsed.metadata) {
+          parsed.metadata.message = line.trim();
+        }
+      }
+
+      // Parse file stats
+      if (line.includes("|") && line.includes("+++") && line.includes("---")) {
+        const match = line.match(/^(.+?)\s+\|\s+(\d+)\s+([+-]+)$/);
+        if (match) {
+          parsed.fileStats.push({
+            file: match[1].trim(),
+            changes: match[2],
+            visual: match[3],
+          });
+        }
+      }
+
+      // Parse file headers
+      if (line.startsWith("diff --git")) {
+        if (currentFile) {
+          parsed.fileDiffs.push(currentFile);
+        }
+        currentFile = {
+          header: line,
+          oldPath: "",
+          newPath: "",
+          hunks: [],
+        };
+        inFileDiff = true;
+      } else if (line.startsWith("--- a/")) {
+        if (currentFile) currentFile.oldPath = line.replace("--- a/", "");
+      } else if (line.startsWith("+++ b/")) {
+        if (currentFile) currentFile.newPath = line.replace("+++ b/", "");
+      } else if (line.startsWith("@@")) {
+        if (currentFile) {
+          if (currentHunk) {
+            currentFile.hunks.push(currentHunk);
+          }
+          currentHunk = {
+            header: line,
+            lines: [],
+          };
+        }
+      } else if (inFileDiff && currentHunk) {
+        currentHunk.lines.push({
+          content: line,
+          type: line.startsWith("+")
+            ? "added"
+            : line.startsWith("-")
+            ? "removed"
+            : "context",
+        });
+      }
+    }
+
+    if (currentFile) {
+      if (currentHunk) {
+        currentFile.hunks.push(currentHunk);
+      }
+      parsed.fileDiffs.push(currentFile);
+    }
+
+    return parsed;
+  };
+
+  const renderDiff = () => {
+    if (!commitMetadata || !diffContent) {
+      return (
+        <Box flexDirection="column">
+          <Text color="yellow">Loading diff...</Text>
+        </Box>
+      );
+    }
+
+    const parsed = parseDiffContent(diffContent);
+    const visibleLines = 20;
+    const startLine = diffScrollOffset;
+    const endLine = Math.min(startLine + visibleLines, parsed.fileDiffs.length);
+
+    return (
+      <Box flexDirection="column" height="100%">
+        {/* Commit Header */}
+        <Box flexDirection="column" marginBottom={1}>
+          <Text bold color="cyan">
+            Commit: {commitMetadata.hash}
+          </Text>
+          <Text color="white">Author: {commitMetadata.author}</Text>
+          <Text color="white">Date: {commitMetadata.authorDate}</Text>
+          <Box marginTop={1}>
+            <Text color="yellow">{commitMetadata.message}</Text>
+          </Box>
+        </Box>
+
+        {/* File Stats */}
+        {parsed.fileStats.length > 0 && (
+          <Box flexDirection="column" marginBottom={1}>
+            <Text bold color="green">
+              Files changed:
+            </Text>
+            {parsed.fileStats.map((stat, index) => (
+              <Text key={index} color="white">
+                {stat.file} | {stat.changes} {stat.visual}
+              </Text>
+            ))}
+          </Box>
+        )}
+
+        {/* Diff Content */}
+        <Box flexDirection="column" flexGrow={1}>
+          <Box marginBottom={1}>
+            <Text color="yellow">↑↓ to scroll, Esc to go back</Text>
+          </Box>
+          {parsed.fileDiffs.slice(startLine, endLine).map((file, fileIndex) => (
+            <Box key={fileIndex} flexDirection="column" marginBottom={1}>
+              <Text bold color="blue">
+                {file.header}
+              </Text>
+              <Text color="magenta">--- a/{file.oldPath}</Text>
+              <Text color="magenta">+++ b/{file.newPath}</Text>
+
+              {file.hunks.map((hunk, hunkIndex) => (
+                <Box key={hunkIndex} flexDirection="column">
+                  <Text color="cyan">{hunk.header}</Text>
+                  {hunk.lines.map((line, lineIndex) => (
+                    <Text
+                      key={lineIndex}
+                      color={
+                        line.type === "added"
+                          ? "green"
+                          : line.type === "removed"
+                          ? "red"
+                          : "white"
+                      }
+                    >
+                      {line.content}
+                    </Text>
+                  ))}
+                </Box>
+              ))}
+            </Box>
+          ))}
+        </Box>
+      </Box>
+    );
+  };
+
   return (
     <Box flexDirection="column" padding={1}>
       {view === "branches" && renderBranches()}
       {view === "commits" && renderCommits()}
       {view === "files" && renderFiles()}
-      <Box marginTop={1}>
-        <Text color="gray">Press Esc to go back/exit</Text>
-      </Box>
+      {view === "diff" && renderDiff()}
+      {view !== "diff" && (
+        <Box marginTop={1}>
+          <Text color="gray">Press Esc to go back/exit</Text>
+        </Box>
+      )}
     </Box>
   );
 };
