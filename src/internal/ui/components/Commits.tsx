@@ -8,7 +8,7 @@ export const Commits: React.FC = () => {
   const branches = useAppStore((s) => s.branches);
   const selectedBranchIndex = useAppStore((s) => s.selectedBranchIndex);
   const commitsScrollOffset = useAppStore((s) => s.commitsScrollOffset);
-  const visibleLines = 20;
+  const visibleLines = 18;
   const start = commitsScrollOffset;
   const end = Math.min(start + visibleLines, commits.length);
   return (

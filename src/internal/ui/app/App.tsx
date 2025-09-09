@@ -1,4 +1,4 @@
-import React, { useEffect } from "react";
+import React, { useEffect, useRef } from "react";
 import { Box, Text, useInput, useApp } from "ink";
 import { useAppStore } from "../../state/store";
 import Branches from "../components/Branches";
@@ -62,6 +62,8 @@ export const App: React.FC = () => {
   const setCurrentFilePath = useAppStore((s) => s.setCurrentFilePath);
   const setFileContent = useAppStore((s) => s.setFileContent);
 
+  const lastEscapeRef = useRef<number>(0);
+
   useEffect(() => {
     try {
       setBranches(Git.loadBranches());
@@ -120,6 +122,11 @@ export const App: React.FC = () => {
 
   useInput((input, key) => {
     if (key.escape) {
+      const now = Date.now();
+      if (now - lastEscapeRef.current < 200) {
+        return;
+      }
+      lastEscapeRef.current = now;
       if (visualMode !== "none") {
         setVisualMode("none");
         setVisualStart(0);
