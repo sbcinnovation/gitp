@@ -34,7 +34,8 @@ export const loadFiles = (commit: string): string[] => {
         line.trim() &&
         !line.startsWith("commit") &&
         !line.startsWith("Author") &&
-        !line.startsWith("Date")
+        !line.startsWith("Date") &&
+        !line.startsWith("    ")
     )
     .map((line) => line.trim());
 };
