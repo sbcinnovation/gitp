@@ -2,16 +2,18 @@
   "name": "gitp",
   "version": "1.0.0",
   "description": "Pretty git branch exploration for the terminal",
-  "main": "src/index.js",
+  "main": "src/index.tsx",
   "type": "module",
   "scripts": {
-    "start": "bun run src/index.js",
-    "dev": "bun --watch src/index.js",
-    "build": "bun build src/index.js --outdir dist --target node"
+    "start": "bun run src/index.tsx browse",
+    "dev": "bun --watch src/index.tsx browse",
+    "build": "bun build src/index.tsx --outdir dist --target node"
   },
   "dependencies": {
+    "commander": "^14.0.0",
     "ink": "^4.4.1",
-    "react": "^18.2.0"
+    "react": "^18.2.0",
+    "zustand": "^5.0.8"
   },
   "devDependencies": {
     "@types/node": "^24.3.0",

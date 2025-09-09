@@ -2,6 +2,11 @@
 
 A beautiful, terminal-based git branch explorer built with Bun and Ink. GITP provides an intuitive way to explore commit history and file changes in any git branch without the need for pushing or committing.
 
+## TODO
+
+- Add fuzzy search for finding branches
+- Goreleaser equivalent
+
 ## Features
 
 - 🌿 **Branch Navigation**: Browse all local and remote branches
