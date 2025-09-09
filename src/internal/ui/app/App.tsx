@@ -148,6 +148,8 @@ export const App: React.FC = () => {
         setFileCursor(0);
       } else if (view === "diff") {
         setView("files");
+        setSelectedFileIndex(0);
+        setFilesScrollOffset(0);
         setDiffScrollOffset(0);
       } else {
         exit();
