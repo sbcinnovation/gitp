@@ -161,7 +161,7 @@ export const Diff: React.FC = () => {
   const panelGap = 3;
   const panelWidth = Math.max(10, Math.floor((terminalWidth - panelGap) / 2));
 
-  if (!commitMetadata || !diffContent) {
+  if (!commitMetadata) {
     return (
       <Box flexDirection="column">
         <Text color="yellow">Loading diff...</Text>
@@ -204,8 +204,8 @@ export const Diff: React.FC = () => {
             </Text>
           )}
           <Text color="yellow">
-            ↑↓ or j/k to scroll, Ctrl+d/Ctrl+u for half-page, v/V for visual
-            mode, y to yank, Esc to go back
+            ↑↓ or j/k to scroll, Ctrl+d/Ctrl+u half-page, [ and ] prev/next
+            file, f view file, v/V visual mode, y yank, Esc back
           </Text>
         </Box>
         {!file && <Text color="gray">No diff content to display.</Text>}
