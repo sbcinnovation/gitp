@@ -1,13 +1,13 @@
 import React, { useEffect } from "react";
 import { Box, Text, useInput, useApp } from "ink";
-import { useAppStore } from "../internal/state/store";
+import { useAppStore } from "../../state/store";
 import Branches from "../components/Branches";
 import { Commits } from "../components/Commits";
 import { Files } from "../components/Files";
 import { Diff } from "../components/Diff";
 import { FileView } from "../components/FileView";
-import * as Git from "../internal/utils/git";
-import { copyToClipboard } from "../internal/utils/clipboard";
+import * as Git from "../../utils/git";
+import { copyToClipboard } from "../../utils/clipboard";
 
 export const App: React.FC = () => {
   const { exit } = useApp();

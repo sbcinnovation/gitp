@@ -3,7 +3,7 @@
 import { Command } from "commander";
 import React from "react";
 import { render } from "ink";
-import App from "./app/App";
+import App from "./internal/ui/app/App";
 
 const program = new Command();
 program

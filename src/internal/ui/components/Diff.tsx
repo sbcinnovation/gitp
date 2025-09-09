@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo } from "react";
 import { Box, Text } from "ink";
-import { useAppStore } from "../internal/state/store";
-import { parseDiffContent } from "../internal/utils/diff";
+import { useAppStore } from "../../state/store";
+import { parseDiffContent } from "../../utils/diff";
 
 export const Diff: React.FC = () => {
   const commitMetadata = useAppStore((s) => s.commitMetadata);
