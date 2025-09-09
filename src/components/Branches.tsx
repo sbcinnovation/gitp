@@ -1,6 +1,6 @@
 import React from "react";
 import { Box, Text } from "ink";
-import { useAppStore } from "../store";
+import { useAppStore } from "../internal/state/store";
 
 export const Branches: React.FC = () => {
   const branches = useAppStore((s) => s.branches);

@@ -1,6 +1,6 @@
 import React from "react";
 import { Box, Text } from "ink";
-import { useAppStore } from "../store";
+import { useAppStore } from "../internal/state/store";
 
 export const FileView: React.FC = () => {
   const commitMetadata = useAppStore((s) => s.commitMetadata);

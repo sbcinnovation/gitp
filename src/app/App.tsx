@@ -1,6 +1,6 @@
 import React, { useEffect } from "react";
 import { Box, Text, useInput, useApp } from "ink";
-import { useAppStore } from "../store";
+import { useAppStore } from "../internal/state/store";
 import Branches from "../components/Branches";
 import { Commits } from "../components/Commits";
 import { Files } from "../components/Files";
