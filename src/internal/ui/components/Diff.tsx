@@ -18,8 +18,10 @@ export const Diff: React.FC = () => {
   const visualEnd = useAppStore((s) => s.visualEnd);
 
   const parsed = useMemo(() => parseDiffContent(diffContent), [diffContent]);
-
-  const isWide = terminalWidth >= 100;
+  // layout thresholds
+  const panelGap = 3;
+  const minPanelWidth = 36; // "medium" threshold so 80-col terms still get side-by-side
+  const isWide = terminalWidth >= minPanelWidth * 2 + panelGap;
   const visibleLines = 20;
 
   type UnifiedRow = { kind: "unified"; text: string; color: any };
@@ -158,7 +160,6 @@ export const Diff: React.FC = () => {
   }, [diffContent, terminalWidth]);
 
   const startRow = diffScrollOffset;
-  const panelGap = 3;
   const panelWidth = Math.max(10, Math.floor((terminalWidth - panelGap) / 2));
 
   if (!commitMetadata) {
