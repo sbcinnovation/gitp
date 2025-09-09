@@ -14,8 +14,8 @@ export const Files: React.FC = () => {
           Files in commit: {commits[selectedCommitIndex]}
         </Text>
         <Text color="yellow">
-          Select a file (↑↓ or j/k to navigate, Enter to view diff, Esc to go
-          back):
+          Select a file (↑↓ or j/k to navigate, Enter to view diff, f to view
+          file, Esc to go back):
         </Text>
       </Box>
       {files.map((file, index) => (

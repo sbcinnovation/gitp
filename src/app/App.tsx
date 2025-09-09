@@ -54,6 +54,7 @@ export const App: React.FC = () => {
   const setFileCursor = useAppStore((s) => s.setFileCursor);
   const currentFilePath = useAppStore((s) => s.currentFilePath);
   const setCurrentFilePath = useAppStore((s) => s.setCurrentFilePath);
+  const setFileContent = useAppStore((s) => s.setFileContent);
 
   useEffect(() => {
     try {
@@ -230,6 +231,39 @@ export const App: React.FC = () => {
       return;
     }
 
+    // Open file content directly from Files view
+    if (view === "files" && input === "f") {
+      const selectedFileObj = files[selectedFileIndex];
+      if (selectedFileObj) {
+        const commitHash = commits[selectedCommitIndex].split(" ")[0];
+        try {
+          const meta = Git.loadCommitMetadata(commitHash);
+          setCommitMetadata({
+            hash: meta.hash,
+            author: meta.author,
+            authorDate: meta.authorDate,
+            committer: meta.committer,
+            commitDate: meta.commitDate,
+            message: meta.message,
+            subject: meta.subject,
+          });
+        } catch (error: any) {
+          // eslint-disable-next-line no-console
+          console.error("Error loading commit metadata:", error.message);
+        }
+        try {
+          const content = Git.loadFileAtCommit(commitHash, selectedFileObj);
+          setCurrentFilePath(selectedFileObj);
+          setFileContent(content);
+          setView("file");
+        } catch (error: any) {
+          // eslint-disable-next-line no-console
+          console.error("Error loading file contents:", error.message);
+        }
+      }
+      return;
+    }
+
     if (input === "j" || key.downArrow) {
       if (view === "branches") {
         setSelectedBranchIndex(
@@ -283,6 +317,76 @@ export const App: React.FC = () => {
         setFileCursor(newCursor);
         if (newCursor < fileScrollOffset) setFileScrollOffset(newCursor);
         if (visualMode !== "none") setVisualEnd(newCursor);
+      }
+      return;
+    }
+
+    // Toggle file/diff and navigate across files while in diff/file views
+    if (view === "diff" && input === "f") {
+      const commitHash = commits[selectedCommitIndex].split(" ")[0];
+      const selectedFileObj = files[selectedFileIndex];
+      if (selectedFileObj) {
+        try {
+          const content = Git.loadFileAtCommit(commitHash, selectedFileObj);
+          setCurrentFilePath(selectedFileObj);
+          setFileContent(content);
+          setView("file");
+        } catch (error: any) {
+          // eslint-disable-next-line no-console
+          console.error("Error loading file contents:", error.message);
+        }
+      }
+      return;
+    }
+
+    if (view === "file" && input === "d") {
+      const commitHash = commits[selectedCommitIndex].split(" ")[0];
+      const selectedFileObj = files[selectedFileIndex] || currentFilePath;
+      if (selectedFileObj) {
+        try {
+          const diff = Git.loadDiff(commitHash, selectedFileObj);
+          setDiffContent(diff);
+          setView("diff");
+        } catch (error: any) {
+          // eslint-disable-next-line no-console
+          console.error("Error loading diff:", error.message);
+        }
+      }
+      return;
+    }
+
+    if (
+      (view === "diff" || view === "file") &&
+      (input === "[" || input === "]")
+    ) {
+      if (!files.length) return;
+      const dir = input === "]" ? 1 : -1;
+      const newIndex = Math.max(
+        0,
+        Math.min(files.length - 1, selectedFileIndex + dir)
+      );
+      if (newIndex !== selectedFileIndex) {
+        setSelectedFileIndex(newIndex);
+        const commitHash = commits[selectedCommitIndex].split(" ")[0];
+        const nextFile = files[newIndex];
+        if (view === "diff") {
+          try {
+            const diff = Git.loadDiff(commitHash, nextFile);
+            setDiffContent(diff);
+          } catch (error: any) {
+            // eslint-disable-next-line no-console
+            console.error("Error loading diff:", error.message);
+          }
+        } else {
+          try {
+            const content = Git.loadFileAtCommit(commitHash, nextFile);
+            setCurrentFilePath(nextFile);
+            setFileContent(content);
+          } catch (error: any) {
+            // eslint-disable-next-line no-console
+            console.error("Error loading file contents:", error.message);
+          }
+        }
       }
       return;
     }

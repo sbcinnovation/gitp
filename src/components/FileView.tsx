@@ -29,8 +29,8 @@ export const FileView: React.FC = () => {
         <Text color="white">File: {currentFilePath}</Text>
         <Box marginTop={1}>
           <Text color="yellow">
-            j/k or ↑/↓ to move line, Ctrl+d/Ctrl+u half-page, v/V visual mode, y
-            yank, Esc back
+            j/k or ↑/↓ to move line, Ctrl+d/Ctrl+u half-page, [ and ] prev/next
+            file, d view diff, v/V visual mode, y yank, Esc back
           </Text>
         </Box>
       </Box>
