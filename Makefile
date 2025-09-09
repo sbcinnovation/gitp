@@ -58,7 +58,6 @@ install-binary: binary
 	sudo cp dist/gitp /usr/local/bin/gitp
 	@echo "gitp has been installed successfully!"
 	@echo "You can now run 'gitp' from anywhere in your terminal."
-	@echo "Note: This requires bun to be installed on the system."
 
 # Uninstall binary from system PATH
 uninstall-binary:
