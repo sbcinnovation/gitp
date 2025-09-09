@@ -14,6 +14,7 @@ A beautiful, terminal-based git branch explorer built with Bun and Ink. GITP pro
 - 📁 **File Explorer**: See which files changed in each commit
 - 🎨 **Beautiful UI**: Rich terminal interface with colors and navigation
 - ⌨️ **VIM-like Controls**: Intuitive keyboard navigation
+- 🔍 **Fuzzy Search**: Be fast, lightning fast.
 - ⚡ **Fast**: Built with Bun for optimal performance
 
 ## Tech Stack
