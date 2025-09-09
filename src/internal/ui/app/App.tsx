@@ -8,6 +8,8 @@ import { Diff } from "../components/Diff";
 import { FileView } from "../components/FileView";
 import * as Git from "../../utils/git";
 import { copyToClipboard } from "../../utils/clipboard";
+import { FuzzySearch } from "../components/FuzzySearch";
+import { rankFuzzyMatches } from "../../utils/fuzzy";
 
 export const App: React.FC = () => {
   const { exit } = useApp();
@@ -61,6 +63,14 @@ export const App: React.FC = () => {
   const currentFilePath = useAppStore((s) => s.currentFilePath);
   const setCurrentFilePath = useAppStore((s) => s.setCurrentFilePath);
   const setFileContent = useAppStore((s) => s.setFileContent);
+
+  // search state
+  const searchOpen = useAppStore((s) => s.searchOpen);
+  const searchQuery = useAppStore((s) => s.searchQuery);
+  const searchMode = useAppStore((s) => s.searchMode);
+  const selectedSearchIndex = useAppStore((s) => s.selectedSearchIndex);
+  const openSearch = useAppStore((s) => s.openSearch);
+  const closeSearch = useAppStore((s) => s.closeSearch);
 
   const lastEscapeRef = useRef<number>(0);
 
@@ -121,6 +131,94 @@ export const App: React.FC = () => {
   };
 
   useInput((input, key) => {
+    // If search is open, capture Enter at the app level for navigation and ignore other app shortcuts
+    if (searchOpen) {
+      if (key.escape) {
+        closeSearch();
+        return;
+      }
+      if (key.return) {
+        try {
+          const options =
+            searchMode === "branches"
+              ? branches
+              : searchMode === "commits"
+              ? commits
+              : searchMode === "files"
+              ? files
+              : [];
+          const results = rankFuzzyMatches(searchQuery, options, 50);
+          const selected = results[selectedSearchIndex]?.item;
+          if (!selected) {
+            closeSearch();
+            return;
+          }
+          if (searchMode === "branches") {
+            const idx = branches.indexOf(selected);
+            if (idx >= 0) {
+              setSelectedBranchIndex(idx);
+              setBranchesScrollOffset(0);
+            }
+            const list = Git.loadCommits(selected);
+            setCommits(list);
+            setCommitsScrollOffset(0);
+            setSelectedCommitIndex(0);
+            setView("commits");
+            closeSearch();
+            return;
+          }
+          if (searchMode === "commits") {
+            const idx = commits.indexOf(selected);
+            if (idx >= 0) {
+              setSelectedCommitIndex(idx);
+              setCommitsScrollOffset(0);
+            }
+            const list = Git.loadFiles(selected);
+            setFiles(list);
+            setFilesScrollOffset(0);
+            setSelectedFileIndex(0);
+            setView("files");
+            closeSearch();
+            return;
+          }
+          if (searchMode === "files") {
+            const idx = files.indexOf(selected);
+            if (idx >= 0) {
+              setSelectedFileIndex(idx);
+              setFilesScrollOffset(0);
+            }
+            const commitHash = commits[selectedCommitIndex].split(" ")[0];
+            try {
+              const meta = Git.loadCommitMetadata(commitHash);
+              setCommitMetadata({
+                hash: meta.hash,
+                author: meta.author,
+                authorDate: meta.authorDate,
+                committer: meta.committer,
+                commitDate: meta.commitDate,
+                message: meta.message,
+                subject: meta.subject,
+              });
+            } catch (error: any) {
+              // eslint-disable-next-line no-console
+              console.error("Error loading commit metadata:", error.message);
+            }
+            const diff = Git.loadDiff(commitHash, selected);
+            setDiffContent(diff);
+            setView("diff");
+            closeSearch();
+            return;
+          }
+        } catch (error: any) {
+          // eslint-disable-next-line no-console
+          console.error("Search selection error:", error?.message ?? error);
+        }
+        closeSearch();
+        return;
+      }
+      // Let FuzzySearch component handle other keys (query typing, j/k)
+      return;
+    }
     if (key.escape) {
       const now = Date.now();
       if (now - lastEscapeRef.current < 200) {
@@ -247,6 +345,14 @@ export const App: React.FC = () => {
           setView("diff");
         }
       }
+      return;
+    }
+
+    // Open fuzzy search with '/'
+    if (input === "/") {
+      if (view === "branches") openSearch("branches");
+      else if (view === "commits") openSearch("commits");
+      else openSearch("files");
       return;
     }
 
@@ -520,6 +626,7 @@ export const App: React.FC = () => {
           <Text color="gray">Press Esc to go back/exit</Text>
         </Box>
       )}
+      <FuzzySearch />
     </Box>
   );
 };

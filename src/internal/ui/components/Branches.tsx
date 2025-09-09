@@ -19,7 +19,8 @@ export const Branches: React.FC = () => {
       </Text>
       <Text color="blue">Current Branch: {currentBranch}</Text>
       <Text color="yellow">
-        Select a branch (↑↓ or j/k to navigate, Enter to select, Esc to exit):
+        Select a branch (↑↓ or j/k to navigate, Enter select, / search, Esc
+        exit):
       </Text>
       {branches.slice(start, end).map((branch, idx) => {
         const realIndex = start + idx;

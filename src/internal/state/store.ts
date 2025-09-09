@@ -56,6 +56,12 @@ export interface AppState {
   currentFilePath: string;
   terminalWidth: number;
 
+  // search UI state
+  searchOpen: boolean;
+  searchQuery: string;
+  searchMode: "branches" | "commits" | "files" | "none";
+  selectedSearchIndex: number;
+
   // actions
   setView: (view: ViewKind) => void;
   setTerminalWidth: (width: number) => void;
@@ -82,6 +88,12 @@ export interface AppState {
   setFileScrollOffset: (offset: number) => void;
   setFileCursor: (cursor: number) => void;
   setCurrentFilePath: (path: string) => void;
+
+  // search actions
+  openSearch: (mode: "branches" | "commits" | "files") => void;
+  closeSearch: () => void;
+  setSearchQuery: (query: string) => void;
+  setSelectedSearchIndex: (idx: number) => void;
 }
 
 export const useAppStore = create<AppState>((set) => ({
@@ -117,6 +129,12 @@ export const useAppStore = create<AppState>((set) => ({
       ? (process.stdout as any).columns
       : 80,
 
+  // search UI state
+  searchOpen: false,
+  searchQuery: "",
+  searchMode: "none",
+  selectedSearchIndex: 0,
+
   setView: (view) => set({ view }),
   setTerminalWidth: (width) => set({ terminalWidth: width }),
   setBranches: (branches) =>
@@ -147,4 +165,23 @@ export const useAppStore = create<AppState>((set) => ({
   setFileScrollOffset: (offset) => set({ fileScrollOffset: offset }),
   setFileCursor: (cursor) => set({ fileCursor: cursor }),
   setCurrentFilePath: (path) => set({ currentFilePath: path }),
+
+  // search actions
+  openSearch: (mode) =>
+    set({
+      searchOpen: true,
+      searchMode: mode,
+      searchQuery: "",
+      selectedSearchIndex: 0,
+    }),
+  closeSearch: () =>
+    set({
+      searchOpen: false,
+      searchMode: "none",
+      searchQuery: "",
+      selectedSearchIndex: 0,
+    }),
+  setSearchQuery: (query) =>
+    set({ searchQuery: query, selectedSearchIndex: 0 }),
+  setSelectedSearchIndex: (idx) => set({ selectedSearchIndex: idx }),
 }));
