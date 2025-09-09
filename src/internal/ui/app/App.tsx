@@ -22,16 +22,22 @@ export const App: React.FC = () => {
   const setCurrentBranch = useAppStore((s) => s.setCurrentBranch);
   const selectedBranchIndex = useAppStore((s) => s.selectedBranchIndex);
   const setSelectedBranchIndex = useAppStore((s) => s.setSelectedBranchIndex);
+  const branchesScrollOffset = useAppStore((s) => s.branchesScrollOffset);
+  const setBranchesScrollOffset = useAppStore((s) => s.setBranchesScrollOffset);
 
   const commits = useAppStore((s) => s.commits);
   const setCommits = useAppStore((s) => s.setCommits);
   const selectedCommitIndex = useAppStore((s) => s.selectedCommitIndex);
   const setSelectedCommitIndex = useAppStore((s) => s.setSelectedCommitIndex);
+  const commitsScrollOffset = useAppStore((s) => s.commitsScrollOffset);
+  const setCommitsScrollOffset = useAppStore((s) => s.setCommitsScrollOffset);
 
   const files = useAppStore((s) => s.files);
   const setFiles = useAppStore((s) => s.setFiles);
   const selectedFileIndex = useAppStore((s) => s.selectedFileIndex);
   const setSelectedFileIndex = useAppStore((s) => s.setSelectedFileIndex);
+  const filesScrollOffset = useAppStore((s) => s.filesScrollOffset);
+  const setFilesScrollOffset = useAppStore((s) => s.setFilesScrollOffset);
 
   const setCommitMetadata = useAppStore((s) => s.setCommitMetadata);
   const setDiffContent = useAppStore((s) => s.setDiffContent);
@@ -124,9 +130,11 @@ export const App: React.FC = () => {
       if (view === "commits") {
         setView("branches");
         setSelectedBranchIndex(0);
+        setBranchesScrollOffset(0);
       } else if (view === "files") {
         setView("commits");
         setSelectedFileIndex(0);
+        setFilesScrollOffset(0);
       } else if (view === "file") {
         setView("files");
         setFileScrollOffset(0);
@@ -179,6 +187,7 @@ export const App: React.FC = () => {
           try {
             const list = Git.loadCommits(selectedBranch);
             setCommits(list);
+            setCommitsScrollOffset(0);
             setSelectedCommitIndex(0);
             setView("commits");
           } catch (error: any) {
@@ -192,6 +201,7 @@ export const App: React.FC = () => {
           try {
             const list = Git.loadFiles(selectedCommitObj);
             setFiles(list);
+            setFilesScrollOffset(0);
             setSelectedFileIndex(0);
             setView("files");
           } catch (error: any) {
@@ -266,15 +276,26 @@ export const App: React.FC = () => {
 
     if (input === "j" || key.downArrow) {
       if (view === "branches") {
-        setSelectedBranchIndex(
-          Math.min(branches.length - 1, selectedBranchIndex + 1)
-        );
+        const visibleLines = 20;
+        const newIndex = Math.min(branches.length - 1, selectedBranchIndex + 1);
+        setSelectedBranchIndex(newIndex);
+        if (newIndex >= branchesScrollOffset + visibleLines) {
+          setBranchesScrollOffset(Math.max(0, newIndex - (visibleLines - 1)));
+        }
       } else if (view === "commits") {
-        setSelectedCommitIndex(
-          Math.min(commits.length - 1, selectedCommitIndex + 1)
-        );
+        const visibleLines = 20;
+        const newIndex = Math.min(commits.length - 1, selectedCommitIndex + 1);
+        setSelectedCommitIndex(newIndex);
+        if (newIndex >= commitsScrollOffset + visibleLines) {
+          setCommitsScrollOffset(Math.max(0, newIndex - (visibleLines - 1)));
+        }
       } else if (view === "files") {
-        setSelectedFileIndex(Math.min(files.length - 1, selectedFileIndex + 1));
+        const visibleLines = 20;
+        const newIndex = Math.min(files.length - 1, selectedFileIndex + 1);
+        setSelectedFileIndex(newIndex);
+        if (newIndex >= filesScrollOffset + visibleLines) {
+          setFilesScrollOffset(Math.max(0, newIndex - (visibleLines - 1)));
+        }
       } else if (view === "diff") {
         const total = diffDisplayRows.length;
         const visibleLines = 20;
@@ -302,11 +323,17 @@ export const App: React.FC = () => {
 
     if (input === "k" || key.upArrow) {
       if (view === "branches") {
-        setSelectedBranchIndex(Math.max(0, selectedBranchIndex - 1));
+        const newIndex = Math.max(0, selectedBranchIndex - 1);
+        setSelectedBranchIndex(newIndex);
+        if (newIndex < branchesScrollOffset) setBranchesScrollOffset(newIndex);
       } else if (view === "commits") {
-        setSelectedCommitIndex(Math.max(0, selectedCommitIndex - 1));
+        const newIndex = Math.max(0, selectedCommitIndex - 1);
+        setSelectedCommitIndex(newIndex);
+        if (newIndex < commitsScrollOffset) setCommitsScrollOffset(newIndex);
       } else if (view === "files") {
-        setSelectedFileIndex(Math.max(0, selectedFileIndex - 1));
+        const newIndex = Math.max(0, selectedFileIndex - 1);
+        setSelectedFileIndex(newIndex);
+        if (newIndex < filesScrollOffset) setFilesScrollOffset(newIndex);
       } else if (view === "diff") {
         const newCursor = Math.max(0, diffCursor - 1);
         setDiffCursor(newCursor);

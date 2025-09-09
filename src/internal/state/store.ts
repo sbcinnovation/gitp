@@ -30,10 +30,13 @@ export interface AppState {
   branches: string[];
   currentBranch: string;
   selectedBranchIndex: number;
+  branchesScrollOffset: number;
   commits: string[];
   selectedCommitIndex: number;
+  commitsScrollOffset: number;
   files: string[];
   selectedFileIndex: number;
+  filesScrollOffset: number;
   view: ViewKind;
 
   commitMetadata: CommitMetadata | null;
@@ -59,10 +62,13 @@ export interface AppState {
   setBranches: (branches: string[]) => void;
   setCurrentBranch: (branch: string) => void;
   setSelectedBranchIndex: (idx: number) => void;
+  setBranchesScrollOffset: (offset: number) => void;
   setCommits: (commits: string[]) => void;
   setSelectedCommitIndex: (idx: number) => void;
+  setCommitsScrollOffset: (offset: number) => void;
   setFiles: (files: string[]) => void;
   setSelectedFileIndex: (idx: number) => void;
+  setFilesScrollOffset: (offset: number) => void;
   setCommitMetadata: (m: CommitMetadata | null) => void;
   setDiffContent: (content: string) => void;
   setDiffScrollOffset: (offset: number) => void;
@@ -82,10 +88,13 @@ export const useAppStore = create<AppState>((set) => ({
   branches: [],
   currentBranch: "",
   selectedBranchIndex: 0,
+  branchesScrollOffset: 0,
   commits: [],
   selectedCommitIndex: 0,
+  commitsScrollOffset: 0,
   files: [],
   selectedFileIndex: 0,
+  filesScrollOffset: 0,
   view: "branches",
 
   commitMetadata: null,
@@ -110,13 +119,19 @@ export const useAppStore = create<AppState>((set) => ({
 
   setView: (view) => set({ view }),
   setTerminalWidth: (width) => set({ terminalWidth: width }),
-  setBranches: (branches) => set({ branches }),
+  setBranches: (branches) =>
+    set({ branches, branchesScrollOffset: 0, selectedBranchIndex: 0 }),
   setCurrentBranch: (branch) => set({ currentBranch: branch }),
   setSelectedBranchIndex: (idx) => set({ selectedBranchIndex: idx }),
-  setCommits: (commits) => set({ commits }),
+  setBranchesScrollOffset: (offset) => set({ branchesScrollOffset: offset }),
+  setCommits: (commits) =>
+    set({ commits, commitsScrollOffset: 0, selectedCommitIndex: 0 }),
   setSelectedCommitIndex: (idx) => set({ selectedCommitIndex: idx }),
-  setFiles: (files) => set({ files }),
+  setCommitsScrollOffset: (offset) => set({ commitsScrollOffset: offset }),
+  setFiles: (files) =>
+    set({ files, filesScrollOffset: 0, selectedFileIndex: 0 }),
   setSelectedFileIndex: (idx) => set({ selectedFileIndex: idx }),
+  setFilesScrollOffset: (offset) => set({ filesScrollOffset: offset }),
   setCommitMetadata: (m) => set({ commitMetadata: m }),
   setDiffContent: (content) =>
     set({ diffContent: content, diffScrollOffset: 0, diffCursor: 0 }),

@@ -51,7 +51,7 @@ export const FileView: React.FC = () => {
                 isSelected ? "yellow" : isCursor ? "cyan" : undefined
               }
             >
-              {lineNo} | {content}
+              {lineNo} | {content} allo
             </Text>
           );
         })}
