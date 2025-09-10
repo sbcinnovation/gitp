@@ -1,9 +1,9 @@
-# GITP: Pretty git branch exploration for the terminal
+# gitp: Pretty git branch exploration for the terminal
 
 _gitp = git print_
 ![gipt example](docs/assets/demo.gif)
 
-A beautiful Cross-platform git explorer CLI built with Bun. `gitp` provides an intuitive way to explore commit history and file changes in any git.
+A beautiful Cross-platform CLI for exploring git repos, built with Bun. `gitp` provides an intuitive way to explore commit history and file changes in any git.
 
 ## Features
 
