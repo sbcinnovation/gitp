@@ -46,10 +46,10 @@ binary: install
 	@echo 'const PROJECT_ROOT = "$(shell pwd)";' >> dist/gitp
 	@echo 'const scriptPath = join(PROJECT_ROOT, "src", "index.tsx");' >> dist/gitp
 	@echo '' >> dist/gitp
-	@echo '// Change to project directory to ensure node_modules are found' >> dist/gitp
-	@echo 'process.chdir(PROJECT_ROOT);' >> dist/gitp
+	@echo '// Forward user CLI args to the app' >> dist/gitp
+	@echo 'const forwardedArgs = process.argv.slice(2);' >> dist/gitp
 	@echo '' >> dist/gitp
-	@echo 'spawn("bun", [scriptPath], { stdio: "inherit" });' >> dist/gitp
+	@echo 'spawn("bun", [scriptPath, ...forwardedArgs], { stdio: "inherit" });' >> dist/gitp
 	chmod +x dist/gitp
 
 # Install binary to system PATH
