@@ -1,11 +1,8 @@
 # GITP: Pretty git branch exploration for the terminal
 
-A beautiful, terminal-based git branch explorer built with Bun and Ink. GITP provides an intuitive way to explore commit history and file changes in any git branch without the need for pushing or committing.
+_gitp = git print_
 
-## TODO
-
-- Add fuzzy search for finding branches
-- Goreleaser equivalent
+A beautiful, terminal-based git branch explorer built with Bun and Ink. `gitp` provides an intuitive way to explore commit history and file changes in any git branch without the need for pushing or committing.
 
 ## Features
 
@@ -77,13 +74,6 @@ make build
 make clean
 ```
 
-## Controls
-
-- **↑/↓ Arrow Keys**: Navigate through items
-- **Enter**: Select item or view details
-- **Esc**: Go back or exit
-- **q**: Exit the application
-
 ## Navigation Flow
 
 1. **Branches View**: Select a git branch to explore
@@ -91,20 +81,15 @@ make clean
 3. **Files View**: See which files changed in the selected commit
 4. **File Content**: View the actual file content at that commit
 
+## Contributing
+
+We welcome pull requests. If you're passionate about lmux and want to help long-term, we're open to adding maintainers, feel free to open an issue to introduce yourself!
+
 ## Requirements
 
 - **Bun**: Latest version (install from [bun.sh](https://bun.sh))
 - **Git**: Must be in a git repository
 - **Terminal**: Supports colors and arrow keys
-
-## Development
-
-The app is structured with React components and uses Ink for terminal rendering:
-
-- `src/index.js` - Main application entry point
-- Uses React hooks for state management
-- Executes git commands to fetch repository data
-- Provides a hierarchical navigation system
 
 ## License
 
