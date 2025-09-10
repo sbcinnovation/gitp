@@ -8,9 +8,9 @@ export const Commits: React.FC = () => {
   const branches = useAppStore((s) => s.branches);
   const selectedBranchIndex = useAppStore((s) => s.selectedBranchIndex);
   const commitsScrollOffset = useAppStore((s) => s.commitsScrollOffset);
-  const visibleLines = 18;
+  const visibleLines = 12;
   const start = commitsScrollOffset;
-  const end = Math.min(start + visibleLines, commits.length);
+  const end = Math.min(start + visibleLines, commits.length) + 20;
   return (
     <Box flexDirection="column">
       <Text color="gray">Commits in {branches[selectedBranchIndex]}</Text>
