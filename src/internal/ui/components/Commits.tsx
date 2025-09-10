@@ -1,6 +1,7 @@
 import React from "react";
 import { Box, Text } from "ink";
 import { useAppStore } from "../../state/store";
+import { VISIBLE_LINES, computeWindow } from "../utils/scroll";
 
 export const Commits: React.FC = () => {
   const commits = useAppStore((s) => s.commits);
@@ -8,9 +9,11 @@ export const Commits: React.FC = () => {
   const branches = useAppStore((s) => s.branches);
   const selectedBranchIndex = useAppStore((s) => s.selectedBranchIndex);
   const commitsScrollOffset = useAppStore((s) => s.commitsScrollOffset);
-  const visibleLines = 12;
-  const start = commitsScrollOffset;
-  const end = Math.min(start + visibleLines, commits.length) + 20;
+  const { start, end } = computeWindow(
+    commitsScrollOffset,
+    commits.length,
+    VISIBLE_LINES,
+  );
   return (
     <Box flexDirection="column">
       <Text color="gray">Commits in {branches[selectedBranchIndex]}</Text>

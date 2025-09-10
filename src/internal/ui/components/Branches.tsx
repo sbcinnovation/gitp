@@ -1,6 +1,7 @@
 import React from "react";
 import { Box, Text } from "ink";
 import { useAppStore } from "../../state/store";
+import { VISIBLE_LINES, computeWindow } from "../utils/scroll";
 
 export const Branches: React.FC = () => {
   const branches = useAppStore((s) => s.branches);
@@ -8,9 +9,11 @@ export const Branches: React.FC = () => {
   const selectedIndex = useAppStore((s) => s.selectedBranchIndex);
   const branchesScrollOffset = useAppStore((s) => s.branchesScrollOffset);
 
-  const visibleLines = 20;
-  const start = branchesScrollOffset;
-  const end = Math.min(start + visibleLines, branches.length);
+  const { start, end } = computeWindow(
+    branchesScrollOffset,
+    branches.length,
+    VISIBLE_LINES,
+  );
 
   return (
     <Box flexDirection="column">

@@ -1,6 +1,7 @@
 import React from "react";
 import { Box, Text } from "ink";
 import { useAppStore } from "../../state/store";
+import { VISIBLE_LINES, computeWindow } from "../utils/scroll";
 
 export const FileView: React.FC = () => {
   const commitMetadata = useAppStore((s) => s.commitMetadata);
@@ -13,12 +14,11 @@ export const FileView: React.FC = () => {
   const fileScrollOffset = useAppStore((s) => s.fileScrollOffset);
 
   const lines = fileContent ? fileContent.split("\n") : ["(empty file)"];
-  const visibleLines = 20;
-  const startLine = Math.max(
-    0,
-    Math.min(fileScrollOffset, Math.max(0, lines.length - visibleLines))
+  const { start: startLine, end: endLine } = computeWindow(
+    fileScrollOffset,
+    lines.length,
+    VISIBLE_LINES,
   );
-  const endLine = Math.min(startLine + visibleLines, lines.length);
 
   return (
     <Box flexDirection="column" height="100%">

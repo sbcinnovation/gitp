@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo } from "react";
 import { Box, Text } from "ink";
 import { useAppStore } from "../../state/store";
+import { VISIBLE_LINES } from "../utils/scroll";
 import { parseDiffContent } from "../../utils/diff";
 
 export const Diff: React.FC = () => {
@@ -22,7 +23,7 @@ export const Diff: React.FC = () => {
   const panelGap = 3;
   const minPanelWidth = 36; // "medium" threshold so 80-col terms still get side-by-side
   const isWide = terminalWidth >= minPanelWidth * 2 + panelGap;
-  const visibleLines = 20;
+  const visibleLines = VISIBLE_LINES;
 
   type UnifiedRow = { kind: "unified"; text: string; color: any };
   type SplitRow = {

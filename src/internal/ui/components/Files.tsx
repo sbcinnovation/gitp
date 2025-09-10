@@ -1,6 +1,7 @@
 import React from "react";
 import { Box, Text } from "ink";
 import { useAppStore } from "../../state/store";
+import { VISIBLE_LINES, computeWindow } from "../utils/scroll";
 
 export const Files: React.FC = () => {
   const commits = useAppStore((s) => s.commits);
@@ -8,9 +9,11 @@ export const Files: React.FC = () => {
   const files = useAppStore((s) => s.files);
   const selectedFileIndex = useAppStore((s) => s.selectedFileIndex);
   const filesScrollOffset = useAppStore((s) => s.filesScrollOffset);
-  const visibleLines = 20;
-  const start = filesScrollOffset;
-  const end = Math.min(start + visibleLines, files.length);
+  const { start, end } = computeWindow(
+    filesScrollOffset,
+    files.length,
+    VISIBLE_LINES,
+  );
   return (
     <Box flexDirection="column">
       <Box flexDirection="column" marginBottom={1}>
