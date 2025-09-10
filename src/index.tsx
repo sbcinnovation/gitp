@@ -109,8 +109,20 @@ program
   .argument("[path]", "Optional path to run in (like vim)")
   .action((maybePath?: string) => {
     try {
-      if (maybePath) {
-        const resolvedPath = resolve(maybePath);
+      const userArgs = process.argv.slice(2);
+      const isSuspiciousPhantomArg = (arg?: string): boolean => {
+        if (!arg) return false;
+        const lower = String(arg).toLowerCase();
+        return lower === program.name().toLowerCase() || lower === "browse";
+      };
+
+      const noRealPathProvided =
+        !maybePath ||
+        maybePath.trim() === "" ||
+        (isSuspiciousPhantomArg(maybePath) && userArgs.length <= 1);
+
+      if (!noRealPathProvided) {
+        const resolvedPath = resolve(maybePath!);
         if (!existsSync(resolvedPath)) {
           // eslint-disable-next-line no-console
           console.error(`Path not found: ${maybePath}`);
