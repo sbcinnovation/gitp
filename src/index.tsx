@@ -2,10 +2,11 @@
 
 import { Command } from "commander";
 import { existsSync, statSync } from "fs";
-import { dirname, resolve } from "path";
+import { dirname, resolve, join } from "path";
 import React from "react";
 import { render } from "ink";
 import App from "./internal/ui/app/App";
+import { execSync } from "child_process";
 
 // Version metadata
 const CURRENT_VERSION = "1.0.0";
@@ -155,6 +156,34 @@ program
           );
           process.exitCode = 1;
           return;
+        }
+      }
+
+      // Try to auto-detect git worktree root and chdir there (helps Windows shims)
+      const findGitWorkTreeRoot = (startDir: string): string | null => {
+        try {
+          let dir = startDir;
+          // Walk up until filesystem root
+          // Stop when ".git" exists (directory or file)
+          // If not found, return null
+          for (;;) {
+            const marker = join(dir, ".git");
+            if (existsSync(marker)) return dir;
+            const parent = dirname(dir);
+            if (!parent || parent === dir) break;
+            dir = parent;
+          }
+          return null;
+        } catch {
+          return null;
+        }
+      };
+      const worktreeRoot = findGitWorkTreeRoot(process.cwd());
+      if (worktreeRoot && worktreeRoot !== process.cwd()) {
+        try {
+          process.chdir(worktreeRoot);
+        } catch {
+          // ignore; we will still try to run and let git report errors
         }
       }
     } catch (e: any) {
