@@ -1,21 +1,22 @@
 import { execSync } from "child_process";
 
-export const loadBranches = (): string[] => {
-  const output = execSync("git branch -a", { encoding: "utf8" });
+export const loadBranches = (repoPath: string): string[] => {
+  const output = execSync("git branch -a", { encoding: "utf8", cwd: repoPath });
   return output
     .split("\n")
     .filter((line) => line.trim())
     .map((line) => line.trim().replace(/^\*?\s*/, ""));
 };
 
-export const loadCurrentBranch = (): string => {
-  const output = execSync("git branch --show-current", { encoding: "utf8" });
+export const loadCurrentBranch = (repoPath: string): string => {
+  const output = execSync("git branch --show-current", { encoding: "utf8", cwd: repoPath });
   return output.trim();
 };
 
-export const loadCommits = (branch: string): string[] => {
+export const loadCommits = (repoPath: string, branch: string): string[] => {
   const output = execSync(`git log --oneline --max-count=50 ${branch}`, {
     encoding: "utf8",
+    cwd: repoPath,
   });
   return output
     .split("\n")
@@ -23,9 +24,10 @@ export const loadCommits = (branch: string): string[] => {
     .map((line) => line.trim());
 };
 
-export const loadFiles = (commit: string): string[] => {
+export const loadFiles = (repoPath: string, commit: string): string[] => {
   const output = execSync(`git show --name-only ${commit.split(" ")[0]}`, {
     encoding: "utf8",
+    cwd: repoPath,
   });
   return output
     .split("\n")
@@ -50,9 +52,10 @@ export type CommitMetadata = {
   subject: string;
 };
 
-export const loadCommitMetadata = (commitHash: string): CommitMetadata => {
+export const loadCommitMetadata = (repoPath: string, commitHash: string): CommitMetadata => {
   const output = execSync(`git show --format=fuller ${commitHash}`, {
     encoding: "utf8",
+    cwd: repoPath,
   });
   const lines = output.split("\n");
   const metadata: CommitMetadata = {
@@ -94,15 +97,17 @@ export const loadCommitMetadata = (commitHash: string): CommitMetadata => {
   return metadata;
 };
 
-export const loadDiff = (commitHash: string, filePath?: string): string => {
+export const loadDiff = (repoPath: string, commitHash: string, filePath?: string): string => {
   const fileArg = filePath ? ` -- "${filePath}"` : "";
   const output = execSync(`git show --stat --patch ${commitHash}${fileArg}`, {
     encoding: "utf8",
+    cwd: repoPath,
   });
   return output;
 };
 
 export const loadFileAtCommit = (
+  repoPath: string,
   commitHash: string,
   filePath: string
 ): string => {
@@ -110,9 +115,11 @@ export const loadFileAtCommit = (
     const output = execSync(`git show --textconv ${commitHash}:${filePath}`, {
       encoding: "utf8",
       stdio: ["ignore", "pipe", "pipe"],
+      cwd: repoPath,
     });
     return output;
   } catch (error: any) {
     return `Unable to display this file at the selected commit. It may be binary or unavailable.\n\nDetails: ${error.message}`;
   }
 };
+

@@ -14,8 +14,9 @@ program
 program
   .command("browse", { isDefault: true })
   .description("Browse branches, commits, files and diffs")
-  .action(() => {
-    render(<App />);
+  .argument("[path]", "Path to the repository", ".")
+  .action((path) => {
+    render(<App repoPath={path} />);
   });
 
 program.parseAsync(process.argv);

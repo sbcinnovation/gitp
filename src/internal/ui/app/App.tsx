@@ -11,9 +11,10 @@ import { copyToClipboard } from "../../utils/clipboard";
 import { FuzzySearch } from "../components/FuzzySearch";
 import { rankFuzzyMatches } from "../../utils/fuzzy";
 
-export const App: React.FC = () => {
+export const App: React.FC<{ repoPath: string }> = ({ repoPath }) => {
   const { exit } = useApp();
 
+  const repoPath = useAppStore((s) => s.repoPath);
   const view = useAppStore((s) => s.view);
   const setView = useAppStore((s) => s.setView);
   const setTerminalWidth = useAppStore((s) => s.setTerminalWidth);
@@ -72,22 +73,28 @@ export const App: React.FC = () => {
   const openSearch = useAppStore((s) => s.openSearch);
   const closeSearch = useAppStore((s) => s.closeSearch);
 
+  const setRepoPath = useAppStore((s) => s.setRepoPath);
+
+  useEffect(() => {
+    setRepoPath(repoPath);
+  }, [repoPath, setRepoPath]);
+
   const lastEscapeRef = useRef<number>(0);
 
   useEffect(() => {
     try {
-      setBranches(Git.loadBranches());
+      setBranches(Git.loadBranches(repoPath));
     } catch (error: any) {
       // eslint-disable-next-line no-console
       console.error("Error loading branches:", error.message);
     }
     try {
-      setCurrentBranch(Git.loadCurrentBranch());
+      setCurrentBranch(Git.loadCurrentBranch(repoPath));
     } catch (error: any) {
       // eslint-disable-next-line no-console
       console.error("Error loading current branch:", error.message);
     }
-  }, [setBranches, setCurrentBranch]);
+  }, [repoPath, setBranches, setCurrentBranch]);
 
   useEffect(() => {
     const handleResize = () => {
@@ -159,7 +166,7 @@ export const App: React.FC = () => {
               setSelectedBranchIndex(idx);
               setBranchesScrollOffset(0);
             }
-            const list = Git.loadCommits(selected);
+            const list = Git.loadCommits(repoPath, selected);
             setCommits(list);
             setCommitsScrollOffset(0);
             setSelectedCommitIndex(0);
@@ -173,7 +180,7 @@ export const App: React.FC = () => {
               setSelectedCommitIndex(idx);
               setCommitsScrollOffset(0);
             }
-            const list = Git.loadFiles(selected);
+            const list = Git.loadFiles(repoPath, selected);
             setFiles(list);
             setFilesScrollOffset(0);
             setSelectedFileIndex(0);
@@ -189,7 +196,7 @@ export const App: React.FC = () => {
             }
             const commitHash = commits[selectedCommitIndex].split(" ")[0];
             try {
-              const meta = Git.loadCommitMetadata(commitHash);
+              const meta = Git.loadCommitMetadata(repoPath, commitHash);
               setCommitMetadata({
                 hash: meta.hash,
                 author: meta.author,
@@ -203,7 +210,7 @@ export const App: React.FC = () => {
               // eslint-disable-next-line no-console
               console.error("Error loading commit metadata:", error.message);
             }
-            const diff = Git.loadDiff(commitHash, selected);
+            const diff = Git.loadDiff(repoPath, commitHash, selected);
             setDiffContent(diff);
             setView("diff");
             closeSearch();
@@ -292,7 +299,7 @@ export const App: React.FC = () => {
         const selectedBranch = branches[selectedBranchIndex];
         if (selectedBranch) {
           try {
-            const list = Git.loadCommits(selectedBranch);
+            const list = Git.loadCommits(repoPath, selectedBranch);
             setCommits(list);
             setCommitsScrollOffset(0);
             setSelectedCommitIndex(0);
@@ -306,7 +313,7 @@ export const App: React.FC = () => {
         const selectedCommitObj = commits[selectedCommitIndex];
         if (selectedCommitObj) {
           try {
-            const list = Git.loadFiles(selectedCommitObj);
+            const list = Git.loadFiles(repoPath, selectedCommitObj);
             setFiles(list);
             setFilesScrollOffset(0);
             setSelectedFileIndex(0);
@@ -321,7 +328,7 @@ export const App: React.FC = () => {
         if (selectedFileObj) {
           const commitHash = commits[selectedCommitIndex].split(" ")[0];
           try {
-            const meta = Git.loadCommitMetadata(commitHash);
+            const meta = Git.loadCommitMetadata(repoPath, commitHash);
             setCommitMetadata({
               hash: meta.hash,
               author: meta.author,
@@ -336,7 +343,7 @@ export const App: React.FC = () => {
             console.error("Error loading commit metadata:", error.message);
           }
           try {
-            const diff = Git.loadDiff(commitHash, selectedFileObj);
+            const diff = Git.loadDiff(repoPath, commitHash, selectedFileObj);
             setDiffContent(diff);
           } catch (error: any) {
             // eslint-disable-next-line no-console
@@ -362,7 +369,7 @@ export const App: React.FC = () => {
       if (selectedFileObj) {
         const commitHash = commits[selectedCommitIndex].split(" ")[0];
         try {
-          const meta = Git.loadCommitMetadata(commitHash);
+          const meta = Git.loadCommitMetadata(repoPath, commitHash);
           setCommitMetadata({
             hash: meta.hash,
             author: meta.author,
@@ -377,7 +384,11 @@ export const App: React.FC = () => {
           console.error("Error loading commit metadata:", error.message);
         }
         try {
-          const content = Git.loadFileAtCommit(commitHash, selectedFileObj);
+          const content = Git.loadFileAtCommit(
+            repoPath,
+            commitHash,
+            selectedFileObj
+          );
           setCurrentFilePath(selectedFileObj);
           setFileContent(content);
           setView("file");
@@ -469,7 +480,11 @@ export const App: React.FC = () => {
       const selectedFileObj = files[selectedFileIndex];
       if (selectedFileObj) {
         try {
-          const content = Git.loadFileAtCommit(commitHash, selectedFileObj);
+          const content = Git.loadFileAtCommit(
+            repoPath,
+            commitHash,
+            selectedFileObj
+          );
           setCurrentFilePath(selectedFileObj);
           setFileContent(content);
           setView("file");
@@ -486,7 +501,7 @@ export const App: React.FC = () => {
       const selectedFileObj = files[selectedFileIndex] || currentFilePath;
       if (selectedFileObj) {
         try {
-          const diff = Git.loadDiff(commitHash, selectedFileObj);
+          const diff = Git.loadDiff(repoPath, commitHash, selectedFileObj);
           setDiffContent(diff);
           setView("diff");
         } catch (error: any) {
@@ -513,7 +528,7 @@ export const App: React.FC = () => {
         const nextFile = files[newIndex];
         if (view === "diff") {
           try {
-            const diff = Git.loadDiff(commitHash, nextFile);
+            const diff = Git.loadDiff(repoPath, commitHash, nextFile);
             setDiffContent(diff);
           } catch (error: any) {
             // eslint-disable-next-line no-console
@@ -521,7 +536,11 @@ export const App: React.FC = () => {
           }
         } else {
           try {
-            const content = Git.loadFileAtCommit(commitHash, nextFile);
+            const content = Git.loadFileAtCommit(
+              repoPath,
+              commitHash,
+              nextFile
+            );
             setCurrentFilePath(nextFile);
             setFileContent(content);
           } catch (error: any) {

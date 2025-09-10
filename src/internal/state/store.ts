@@ -27,6 +27,7 @@ export interface CommitMetadata {
 }
 
 export interface AppState {
+  repoPath: string;
   branches: string[];
   currentBranch: string;
   selectedBranchIndex: number;
@@ -62,7 +63,7 @@ export interface AppState {
   searchMode: "branches" | "commits" | "files" | "none";
   selectedSearchIndex: number;
 
-  // actions
+  setRepoPath: (path: string) => void;
   setView: (view: ViewKind) => void;
   setTerminalWidth: (width: number) => void;
   setBranches: (branches: string[]) => void;
@@ -97,6 +98,7 @@ export interface AppState {
 }
 
 export const useAppStore = create<AppState>((set) => ({
+  repoPath: ".",
   branches: [],
   currentBranch: "",
   selectedBranchIndex: 0,
@@ -135,6 +137,7 @@ export const useAppStore = create<AppState>((set) => ({
   searchMode: "none",
   selectedSearchIndex: 0,
 
+  setRepoPath: (path) => set({ repoPath: path }),
   setView: (view) => set({ view }),
   setTerminalWidth: (width) => set({ terminalWidth: width }),
   setBranches: (branches) =>
