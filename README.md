@@ -3,7 +3,7 @@
 _gitp = git print_
 ![gipt example](docs/assets/demo.gif)
 
-A beautiful Cross-platform CLI git explorer built with Bun and Ink. `gitp` provides an intuitive way to explore commit history and file changes in any git.
+A beautiful Cross-platform git explorer CLI built with Bun. `gitp` provides an intuitive way to explore commit history and file changes in any git.
 
 ## Features
 
