@@ -1,4 +1,4 @@
-import { execSync } from "child_process";
+import { execFileSync, execSync } from "child_process";
 import { existsSync } from "fs";
 import { dirname, join } from "path";
 
@@ -7,12 +7,10 @@ let cachedRepoRoot: string | null = null;
 const detectRepoRoot = (): string | null => {
   // Try git toplevel first
   try {
-    const out = execSync("git rev-parse --show-toplevel", {
+    const out = execFileSync("git", ["rev-parse", "--show-toplevel"], {
       encoding: "utf8",
       stdio: ["ignore", "pipe", "pipe"],
-    })
-      .toString()
-      .trim();
+    }).trim();
     if (out) return out;
   } catch {
     // ignore
@@ -40,11 +38,17 @@ const getRepoRoot = (): string | undefined => {
   return root ?? undefined;
 };
 
-export const loadBranches = (): string[] => {
-  const output = execSync("git branch -a", {
+const runGit = (args: string[]): string => {
+  const root = getRepoRoot();
+  const finalArgs = root ? ["-C", root, ...args] : args;
+  return execFileSync("git", finalArgs, {
     encoding: "utf8",
-    cwd: getRepoRoot(),
-  });
+    stdio: ["ignore", "pipe", "pipe"],
+  }).toString();
+};
+
+export const loadBranches = (): string[] => {
+  const output = runGit(["branch", "-a"]);
   return output
     .split("\n")
     .filter((line) => line.trim())
@@ -52,18 +56,12 @@ export const loadBranches = (): string[] => {
 };
 
 export const loadCurrentBranch = (): string => {
-  const output = execSync("git branch --show-current", {
-    encoding: "utf8",
-    cwd: getRepoRoot(),
-  });
+  const output = runGit(["branch", "--show-current"]);
   return output.trim();
 };
 
 export const loadCommits = (branch: string): string[] => {
-  const output = execSync(`git log --oneline --max-count=50 ${branch}`, {
-    encoding: "utf8",
-    cwd: getRepoRoot(),
-  });
+  const output = runGit(["log", "--oneline", "--max-count=50", branch]);
   return output
     .split("\n")
     .filter((line) => line.trim())
@@ -71,10 +69,7 @@ export const loadCommits = (branch: string): string[] => {
 };
 
 export const loadFiles = (commit: string): string[] => {
-  const output = execSync(`git show --name-only ${commit.split(" ")[0]}`, {
-    encoding: "utf8",
-    cwd: getRepoRoot(),
-  });
+  const output = runGit(["show", "--name-only", commit.split(" ")[0]]);
   return output
     .split("\n")
     .filter(
@@ -99,10 +94,7 @@ export type CommitMetadata = {
 };
 
 export const loadCommitMetadata = (commitHash: string): CommitMetadata => {
-  const output = execSync(`git show --format=fuller ${commitHash}`, {
-    encoding: "utf8",
-    cwd: getRepoRoot(),
-  });
+  const output = runGit(["show", "--format=fuller", commitHash]);
   const lines = output.split("\n");
   const metadata: CommitMetadata = {
     hash: commitHash,
@@ -145,10 +137,9 @@ export const loadCommitMetadata = (commitHash: string): CommitMetadata => {
 
 export const loadDiff = (commitHash: string, filePath?: string): string => {
   const fileArg = filePath ? ` -- "${filePath}"` : "";
-  const output = execSync(`git show --stat --patch ${commitHash}${fileArg}`, {
-    encoding: "utf8",
-    cwd: getRepoRoot(),
-  });
+  const output = filePath
+    ? runGit(["show", "--stat", "--patch", commitHash, "--", filePath])
+    : runGit(["show", "--stat", "--patch", commitHash]);
   return output;
 };
 
@@ -157,11 +148,7 @@ export const loadFileAtCommit = (
   filePath: string
 ): string => {
   try {
-    const output = execSync(`git show --textconv ${commitHash}:${filePath}`, {
-      encoding: "utf8",
-      stdio: ["ignore", "pipe", "pipe"],
-      cwd: getRepoRoot(),
-    });
+    const output = runGit(["show", "--textconv", `${commitHash}:${filePath}`]);
     return output;
   } catch (error: any) {
     return `Unable to display this file at the selected commit. It may be binary or unavailable.\n\nDetails: ${error.message}`;
