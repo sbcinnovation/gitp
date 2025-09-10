@@ -12,7 +12,7 @@ program
   .version("1.0.0");
 
 program
-  .command("browse")
+  .command("browse", { isDefault: true })
   .description("Browse branches, commits, files and diffs")
   .action(() => {
     render(<App />);
