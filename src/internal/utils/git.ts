@@ -1,7 +1,50 @@
 import { execSync } from "child_process";
+import { existsSync } from "fs";
+import { dirname, join } from "path";
+
+let cachedRepoRoot: string | null = null;
+
+const detectRepoRoot = (): string | null => {
+  // Try git toplevel first
+  try {
+    const out = execSync("git rev-parse --show-toplevel", {
+      encoding: "utf8",
+      stdio: ["ignore", "pipe", "pipe"],
+    })
+      .toString()
+      .trim();
+    if (out) return out;
+  } catch {
+    // ignore
+  }
+  // Fallback: walk up for a .git marker
+  try {
+    let dir = process.cwd();
+    for (;;) {
+      const marker = join(dir, ".git");
+      if (existsSync(marker)) return dir;
+      const parent = dirname(dir);
+      if (!parent || parent === dir) break;
+      dir = parent;
+    }
+  } catch {
+    // ignore
+  }
+  return null;
+};
+
+const getRepoRoot = (): string | undefined => {
+  if (cachedRepoRoot !== null) return cachedRepoRoot || undefined;
+  const root = detectRepoRoot();
+  cachedRepoRoot = root ?? "";
+  return root ?? undefined;
+};
 
 export const loadBranches = (): string[] => {
-  const output = execSync("git branch -a", { encoding: "utf8" });
+  const output = execSync("git branch -a", {
+    encoding: "utf8",
+    cwd: getRepoRoot(),
+  });
   return output
     .split("\n")
     .filter((line) => line.trim())
@@ -9,13 +52,17 @@ export const loadBranches = (): string[] => {
 };
 
 export const loadCurrentBranch = (): string => {
-  const output = execSync("git branch --show-current", { encoding: "utf8" });
+  const output = execSync("git branch --show-current", {
+    encoding: "utf8",
+    cwd: getRepoRoot(),
+  });
   return output.trim();
 };
 
 export const loadCommits = (branch: string): string[] => {
   const output = execSync(`git log --oneline --max-count=50 ${branch}`, {
     encoding: "utf8",
+    cwd: getRepoRoot(),
   });
   return output
     .split("\n")
@@ -26,6 +73,7 @@ export const loadCommits = (branch: string): string[] => {
 export const loadFiles = (commit: string): string[] => {
   const output = execSync(`git show --name-only ${commit.split(" ")[0]}`, {
     encoding: "utf8",
+    cwd: getRepoRoot(),
   });
   return output
     .split("\n")
@@ -53,6 +101,7 @@ export type CommitMetadata = {
 export const loadCommitMetadata = (commitHash: string): CommitMetadata => {
   const output = execSync(`git show --format=fuller ${commitHash}`, {
     encoding: "utf8",
+    cwd: getRepoRoot(),
   });
   const lines = output.split("\n");
   const metadata: CommitMetadata = {
@@ -98,6 +147,7 @@ export const loadDiff = (commitHash: string, filePath?: string): string => {
   const fileArg = filePath ? ` -- "${filePath}"` : "";
   const output = execSync(`git show --stat --patch ${commitHash}${fileArg}`, {
     encoding: "utf8",
+    cwd: getRepoRoot(),
   });
   return output;
 };
@@ -110,6 +160,7 @@ export const loadFileAtCommit = (
     const output = execSync(`git show --textconv ${commitHash}:${filePath}`, {
       encoding: "utf8",
       stdio: ["ignore", "pipe", "pipe"],
+      cwd: getRepoRoot(),
     });
     return output;
   } catch (error: any) {
