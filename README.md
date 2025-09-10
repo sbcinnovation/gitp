@@ -1,4 +1,4 @@
-# gitp: Pretty git branch exploration for the terminal
+# gitp: Pretty git exploration for the terminal
 
 _gitp = git print_
 ![gipt example](docs/assets/demo.gif)
