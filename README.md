@@ -47,16 +47,18 @@ brew install sbcinnovation/tap/gitp
 
 - Debian/Ubuntu (.deb):
 
+Download the latest .deb from the [Releases page](https://github.com/sbcinnovation/sbc-gitp/releases), then:
+
 ```bash
-# Download the latest .deb from the Releases page, then:
 sudo dpkg -i gitp_<version>_linux_amd64.deb   # or arm64
 sudo apt-get -f install
 ```
 
 - RHEL/CentOS/Fedora (.rpm):
 
+Download the latest .rpm from the [Releases page](https://github.com/sbcinnovation/sbc-gitp/releases), then:
+
 ```bash
-# Download the latest .rpm from the Releases page, then:
 sudo rpm -i gitp_<version>_linux_x86_64.rpm   # or aarch64
 ```
 
