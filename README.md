@@ -10,6 +10,7 @@ A beautiful, terminal-based git branch explorer built with Bun and Ink. GITP pro
 ## Features
 
 - 🌿 **Branch Navigation**: Browse all local and remote branches
+- 🪟🔄 **Dynamic Git Diff views**: Readable giffs for the terminal
 - 📝 **Commit History**: View commit messages and details
 - 📁 **File Explorer**: See which files changed in each commit
 - 🎨 **Beautiful UI**: Rich terminal interface with colors and navigation
