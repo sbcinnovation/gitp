@@ -23,6 +23,44 @@ A beautiful, terminal-based git branch explorer built with Bun and Ink. `gitp` p
 
 ## Installation
 
+### macOS (Homebrew)
+
+```bash
+brew install sbcinnovation/tap/gitp
+```
+
+### Windows (Scoop)
+
+```powershell
+scoop bucket add sbcinnovation https://github.com/sbcinnovation/scoop-bucket
+scoop install gitp
+```
+
+### Linux
+
+- Homebrew on Linux:
+
+```bash
+brew install sbcinnovation/tap/gitp
+```
+
+- Debian/Ubuntu (.deb):
+
+```bash
+# Download the latest .deb from the Releases page, then:
+sudo dpkg -i gitp_<version>_linux_amd64.deb   # or arm64
+sudo apt-get -f install
+```
+
+- RHEL/CentOS/Fedora (.rpm):
+
+```bash
+# Download the latest .rpm from the Releases page, then:
+sudo rpm -i gitp_<version>_linux_x86_64.rpm   # or aarch64
+```
+
+### Install from source
+
 1. Clone the repository:
 
 ```bash
