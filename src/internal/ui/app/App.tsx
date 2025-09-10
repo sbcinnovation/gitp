@@ -143,10 +143,10 @@ export const App: React.FC = () => {
             searchMode === "branches"
               ? branches
               : searchMode === "commits"
-              ? commits
-              : searchMode === "files"
-              ? files
-              : [];
+                ? commits
+                : searchMode === "files"
+                  ? files
+                  : [];
           const results = rankFuzzyMatches(searchQuery, options, 50);
           const selected = results[selectedSearchIndex]?.item;
           if (!selected) {
@@ -428,7 +428,7 @@ export const App: React.FC = () => {
         const maxOffset = Math.max(0, newCursor - (visibleLines - 1));
         if (newCursor >= fileScrollOffset + visibleLines) {
           setFileScrollOffset(
-            Math.min(maxOffset, Math.max(0, lines.length - visibleLines))
+            Math.min(maxOffset, Math.max(0, lines.length - visibleLines)),
           );
         }
         if (visualMode !== "none") setVisualEnd(newCursor);
@@ -505,7 +505,7 @@ export const App: React.FC = () => {
       const dir = input === "]" ? 1 : -1;
       const newIndex = Math.max(
         0,
-        Math.min(files.length - 1, selectedFileIndex + dir)
+        Math.min(files.length - 1, selectedFileIndex + dir),
       );
       if (newIndex !== selectedFileIndex) {
         setSelectedFileIndex(newIndex);
@@ -541,7 +541,7 @@ export const App: React.FC = () => {
         setDiffCursor(newCursor);
         const newOffset = Math.min(
           Math.max(0, diffScrollOffset + 10),
-          Math.max(0, total - visibleLines)
+          Math.max(0, total - visibleLines),
         );
         setDiffScrollOffset(newOffset);
         if (visualMode !== "none") setVisualEnd(newCursor);
@@ -566,7 +566,7 @@ export const App: React.FC = () => {
         setDiffCursor(newCursor);
         const newOffset = Math.min(
           Math.max(0, diffScrollOffset + 10),
-          Math.max(0, total - visibleLines)
+          Math.max(0, total - visibleLines),
         );
         setDiffScrollOffset(newOffset);
         if (visualMode !== "none") setVisualEnd(newCursor);
@@ -581,7 +581,7 @@ export const App: React.FC = () => {
         setFileCursor(newCursor);
         const newOffset = Math.min(
           Math.max(0, fileScrollOffset + 10),
-          Math.max(0, lines.length - visibleLines)
+          Math.max(0, lines.length - visibleLines),
         );
         setFileScrollOffset(newOffset);
         if (visualMode !== "none") setVisualEnd(newCursor);
@@ -606,7 +606,7 @@ export const App: React.FC = () => {
         setFileCursor(newCursor);
         const newOffset = Math.min(
           Math.max(0, fileScrollOffset + 10),
-          Math.max(0, lines.length - visibleLines)
+          Math.max(0, lines.length - visibleLines),
         );
         setFileScrollOffset(newOffset);
         if (visualMode !== "none") setVisualEnd(newCursor);
